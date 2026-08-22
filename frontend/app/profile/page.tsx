@@ -19,7 +19,7 @@ export default function ProfilePage() {
 
   // Navigation State
   const [activeNavTab, setActiveNavTab] = useState<"employees" | "attendance" | "time_off">("employees");
-  const [profileTab, setProfileTab] = useState<"resume" | "private_info" | "salary_info">("resume");
+  const [profileTab, setProfileTab] = useState<"resume" | "private_info" | "salary_info" | "security">("resume");
 
   // Systray State
   const [isCheckedIn, setIsCheckedIn] = useState(true);
@@ -105,7 +105,7 @@ export default function ProfilePage() {
   const name = (firstName || lastName) ? `${firstName || ""} ${lastName || ""}`.trim() : "null";
 
   const email = myProfile?.email ?? activeUser?.email ?? "null";
-  const loginId = email;
+  const loginId = activeUser?.id ?? "null";
   const company = myProfile?.comp_name ?? "null";
   const department = myProfile?.dept_name ?? activeUser?.department_name ?? "null";
   const manager = myProfile?.manager_name ?? "null";
@@ -479,6 +479,17 @@ export default function ProfilePage() {
                 Salary Info
               </button>
             )}
+
+            <button
+              onClick={() => setProfileTab("security")}
+              className={`px-6 py-3 text-sm font-semibold border-b-2 transition-all duration-200 cursor-pointer ${
+                profileTab === "security"
+                  ? "border-indigo-500 text-white"
+                  : "border-transparent text-zinc-400 hover:text-zinc-200"
+              }`}
+            >
+              Security
+            </button>
           </div>
         </div>
 

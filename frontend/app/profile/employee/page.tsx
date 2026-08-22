@@ -1,84 +1,158 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useApp } from "@/context/AppContext";
 import { DashboardHeader } from "@/components";
 import toast from "react-hot-toast";
 
 export default function EmployeeProfilePage() {
-  const { activeUser } = useApp();
+  const { activeUser, myProfile, profileLoading, fetchMyProfile, updateMyProfile } = useApp();
+
+  // Fetch Profile on Mount
+  useEffect(() => {
+    fetchMyProfile();
+  }, []);
 
   // Navigation State
   const [activeNavTab, setActiveNavTab] = useState<"employees" | "attendance" | "time_off">("employees");
-  const [profileTab, setProfileTab] = useState<"resume" | "private_info" | "salary_info" | "security">("private_info");
+  const [profileTab, setProfileTab] = useState<"resume" | "private_info" | "salary_info">("resume");
 
   // Systray State
   const [isCheckedIn, setIsCheckedIn] = useState(true);
   const [checkInTime, setCheckInTime] = useState<string | null>("08:45 AM");
 
-  // Profile Header State (from Employee Wireframe - Strict View Only)
-  const [name] = useState(activeUser?.name || "Alex Morgan");
-  const [jobPosition] = useState(activeUser?.department_name ? `Senior ${activeUser.department_name} Engineer` : "Senior Frontend Engineer");
-  const [email] = useState(activeUser?.email || "alex.morgan@dayflow.internal");
-  const [mobile] = useState("+1 (555) 234-5678");
-  const [company] = useState("DayFlow Technologies Inc.");
-  const [department] = useState(activeUser?.department_name || "Engineering");
-  const [manager] = useState("Elena Rostova (VP of People)");
-  const [location] = useState("Floor 4 - Tech Bay A, San Francisco HQ");
-  const [avatar] = useState(
-    "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80"
-  );
+  // Resume Form State
+  const [bioText, setBioText] = useState("");
+  const [editingBio, setEditingBio] = useState(false);
 
-  // Private Info Tab State (Exact fields from Employee Wireframe - Strict View Only)
-  const [dob] = useState("14 Oct 1996");
-  const [address] = useState("124 Market Street, Suite 400, San Francisco, CA 94103");
-  const [nationality] = useState("United States");
-  const [personalEmail] = useState("alex.personal@example.com");
-  const [gender] = useState("Female");
-  const [maritalStatus] = useState("Single");
-  const [doj] = useState("12 Jan 2023");
+  // Skills State
+  const [skills, setSkills] = useState<string[]>([]);
+  const [newSkillInput, setNewSkillInput] = useState("");
+  const [showAddSkill, setShowAddSkill] = useState(false);
 
-  // Bank & Statutory Identification Details (from Employee Wireframe - Strict View Only)
-  const [accountNumber] = useState("•••• •••• 9821");
-  const [bankName] = useState("Silicon Valley Bank");
-  const [ifscCode] = useState("SVB0004521");
-  const [panNo] = useState("ABCDE1234F");
-  const [uanNo] = useState("100987654321");
-  const [empCode] = useState("DF-EMP-204");
-
-  // Resume Tab Content (Strict View Only)
-  const [aboutText] = useState(
-    "Lead frontend architect specializing in high-performance web applications, responsive user interfaces, and state-of-the-art interactive component design."
-  );
-
-  const [jobLoveText] = useState(
-    "Designing elegant user interfaces, crafting smooth micro-interactions, and building resilient systems that empower people to do their best work."
-  );
-
-  const [hobbiesText] = useState(
-    "Open-source tooling, mechanical keyboards, landscape photography, hiking, and coffee brewing."
-  );
-
-  // Skills State (Strict View Only)
-  const [skills] = useState<string[]>([
-    "React / Next.js",
-    "TypeScript",
-    "TailwindCSS",
-    "GraphQL",
-    "System Architecture",
-    "UI/UX Prototyping",
-  ]);
-
-  // Certifications State (Strict View Only)
-  const [certifications] = useState<
+  // Certifications State
+  const [certifications, setCertifications] = useState<
     { name: string; issuer: string; year: string }[]
-  >([
-    { name: "AWS Certified Solutions Architect", issuer: "Amazon Web Services", year: "2024" },
-    { name: "Certified Frontend Specialist", issuer: "Frontend Masters", year: "2023" },
-  ]);
+  >([]);
+  const [newCertName, setNewCertName] = useState("");
+  const [newCertIssuer, setNewCertIssuer] = useState("");
+  const [newCertYear, setNewCertYear] = useState("");
+  const [showAddCert, setShowAddCert] = useState(false);
 
-  // Toggle Check In / Out
+  // Sync myProfile from context when fetched or updated
+  useEffect(() => {
+    if (myProfile) {
+      setBioText(myProfile.bio || "");
+      if (myProfile.skills && Array.isArray(myProfile.skills)) {
+        setSkills(myProfile.skills);
+      } else {
+        setSkills([]);
+      }
+      if (myProfile.certification && Array.isArray(myProfile.certification)) {
+        setCertifications(
+          myProfile.certification.map((c) => {
+            if (c.includes(" | ")) {
+              const [cName, cIssuer, cYear] = c.split(" | ");
+              return { name: cName || c, issuer: cIssuer || "", year: cYear || "" };
+            }
+            return { name: c, issuer: "", year: "" };
+          })
+        );
+      } else {
+        setCertifications([]);
+      }
+    }
+  }, [myProfile]);
+
+  // Derived Header Profile Fields
+  const firstName = myProfile?.f_name ?? activeUser?.first_name ?? null;
+  const lastName = myProfile?.l_name ?? activeUser?.last_name ?? null;
+  const name = (firstName || lastName) ? `${firstName || ""} ${lastName || ""}`.trim() : "null";
+
+  const email = myProfile?.email ?? activeUser?.email ?? "null";
+  const loginId = activeUser?.id ?? "null";
+  const company = myProfile?.comp_name ?? "null";
+  const department = myProfile?.dept_name ?? activeUser?.department_name ?? "null";
+  const manager = myProfile?.manager_name ?? "null";
+  const location = myProfile?.location ?? "null";
+  const avatar =
+    "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80";
+
+  // Private Info Fields (Strict View Only)
+  const pEmail = myProfile?.p_email ?? null;
+  const dob = myProfile?.dob ? myProfile.dob.split("T")[0] : null;
+  const nationality = myProfile?.nationality ?? null;
+  const gender = myProfile?.gender ?? null;
+  const maritalStatus = myProfile?.marital_status ?? null;
+  const doj = myProfile?.doj ? myProfile.doj.split("T")[0] : null;
+  const uanNo = myProfile?.uan_no ?? null;
+  const panNo = myProfile?.pan_no ?? null;
+  const ifscCode = myProfile?.ifsc_code ?? null;
+  const bankName = myProfile?.bank_name ?? null;
+  const accNumber = myProfile?.acc_number ?? null;
+
+  // Resume Update Handlers
+  const handleSaveBio = async () => {
+    const res = await updateMyProfile({ bio: bioText });
+    if (res) setEditingBio(false);
+  };
+
+  const handleAddSkill = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSkillInput.trim()) return;
+    const newSkill = newSkillInput.trim();
+    if (skills.includes(newSkill)) {
+      toast.error("Skill already added.");
+      return;
+    }
+    const updatedSkills = [...skills, newSkill];
+    const res = await updateMyProfile({ skills: updatedSkills });
+    if (res) {
+      setSkills(updatedSkills);
+      setNewSkillInput("");
+      setShowAddSkill(false);
+    }
+  };
+
+  const handleRemoveSkill = async (skillToRemove: string) => {
+    const updatedSkills = skills.filter((s) => s !== skillToRemove);
+    const res = await updateMyProfile({ skills: updatedSkills });
+    if (res) {
+      setSkills(updatedSkills);
+    }
+  };
+
+  const handleAddCert = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCertName.trim()) {
+      toast.error("Please fill in certification name.");
+      return;
+    }
+    const certString = newCertIssuer.trim()
+      ? `${newCertName.trim()} | ${newCertIssuer.trim()} | ${newCertYear.trim()}`
+      : newCertName.trim();
+    const currentCertStrings = certifications.map((c) =>
+      c.issuer ? `${c.name} | ${c.issuer} | ${c.year}` : c.name
+    );
+    const updatedCerts = [...currentCertStrings, certString];
+    const res = await updateMyProfile({ certification: updatedCerts });
+    if (res) {
+      setCertifications((prev) => [
+        ...prev,
+        {
+          name: newCertName.trim(),
+          issuer: newCertIssuer.trim(),
+          year: newCertYear.trim(),
+        },
+      ]);
+      setNewCertName("");
+      setNewCertIssuer("");
+      setNewCertYear("");
+      setShowAddCert(false);
+    }
+  };
+
   const handleToggleCheckIn = () => {
     if (isCheckedIn) {
       setIsCheckedIn(false);
@@ -91,6 +165,46 @@ export default function EmployeeProfilePage() {
       toast.success(`Checked IN at ${nowTime}!`);
     }
   };
+
+  // Skeleton Loading Screen
+  if (profileLoading && !myProfile) {
+    return (
+      <div className="min-h-screen flex flex-col bg-zinc-950 text-zinc-100 font-sans selection:bg-indigo-500/30 selection:text-white">
+        <DashboardHeader
+          activeTab={activeNavTab}
+          setActiveTab={setActiveNavTab}
+          isCheckedIn={isCheckedIn}
+          checkInTime={checkInTime}
+          onToggleCheckIn={handleToggleCheckIn}
+          onOpenMyProfile={() => {}}
+        />
+        <main className="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6 animate-pulse">
+          <div className="flex items-center justify-between border-b border-zinc-800/80 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-zinc-800/80"></div>
+              <div className="w-36 h-7 rounded-lg bg-zinc-800/80"></div>
+            </div>
+            <div className="w-24 h-6 rounded-full bg-zinc-800/80"></div>
+          </div>
+          <div className="w-full bg-zinc-900/70 border border-zinc-800 rounded-3xl p-6 sm:p-8 space-y-6">
+            <div className="flex flex-col lg:flex-row items-start lg:items-center gap-6 lg:gap-10">
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-zinc-800/80 flex-shrink-0"></div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1 w-full">
+                <div className="space-y-3">
+                  <div className="w-48 h-8 bg-zinc-800/80 rounded-lg"></div>
+                  <div className="w-36 h-4 bg-zinc-800/80 rounded-md"></div>
+                </div>
+                <div className="space-y-3 bg-zinc-950/50 p-4 rounded-2xl border border-zinc-800/60">
+                  <div className="w-full h-4 bg-zinc-800/80 rounded-md"></div>
+                  <div className="w-full h-4 bg-zinc-800/80 rounded-md"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-zinc-950 text-zinc-100 font-sans selection:bg-indigo-500/30 selection:text-white">
@@ -108,7 +222,7 @@ export default function EmployeeProfilePage() {
       {/* Main Container */}
       <main className="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
         
-        {/* Title Bar & Back Navigation (Exact Wireframe Architecture) */}
+        {/* Title Bar & Back Navigation */}
         <div className="flex items-center justify-between border-b border-zinc-800/80 pb-4">
           <div className="flex items-center gap-3">
             <Link
@@ -132,11 +246,11 @@ export default function EmployeeProfilePage() {
           </div>
         </div>
 
-        {/* Hero Profile Info Card (Exact Employee Wireframe Layout - View Only) */}
+        {/* Hero Profile Info Card */}
         <div className="w-full bg-zinc-900/70 border border-zinc-800 backdrop-blur-xl rounded-3xl p-6 sm:p-8 shadow-xl">
           <div className="flex flex-col lg:flex-row items-start lg:items-center gap-6 lg:gap-10">
             
-            {/* Avatar (Strict View Only, No Edit Pencil Button) */}
+            {/* Avatar */}
             <div className="relative flex-shrink-0">
               <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden bg-zinc-800 border-2 border-zinc-700 shadow-xl">
                 <img
@@ -147,17 +261,17 @@ export default function EmployeeProfilePage() {
               </div>
             </div>
 
-            {/* Profile Metadata (Dual Column Layout from Wireframe - View Only) */}
+            {/* Profile Metadata */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1 w-full text-left">
               
-              {/* Left Column: My Name, Job Position, Email, Mobile */}
+              {/* Left Column: Name, Email */}
               <div className="space-y-3">
                 <div>
                   <h2 className="text-2xl sm:text-3xl font-serif text-white tracking-tight">
                     {name}
                   </h2>
-                  <p className="text-xs text-indigo-400 font-medium mt-0.5">
-                    {jobPosition}
+                  <p className="text-xs text-indigo-400 font-mono mt-0.5">
+                    Login ID: <span className="text-zinc-200 font-semibold">{loginId}</span>
                   </p>
                 </div>
 
@@ -167,11 +281,6 @@ export default function EmployeeProfilePage() {
                     <a href={`mailto:${email}`} className="text-white hover:text-indigo-400 transition-colors font-medium">
                       {email}
                     </a>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <span className="text-zinc-400 font-medium w-16">Mobile:</span>
-                    <span className="text-zinc-200 font-mono">{mobile}</span>
                   </div>
                 </div>
               </div>
@@ -204,7 +313,7 @@ export default function EmployeeProfilePage() {
           </div>
         </div>
 
-        {/* Profile Sub-Tabs (Resume | Private Info | Salary Info | Security) */}
+        {/* Profile Sub-Tabs Navigation */}
         <div className="border-b border-zinc-800">
           <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
             <button
@@ -239,103 +348,202 @@ export default function EmployeeProfilePage() {
             >
               Salary Info
             </button>
-
-            <button
-              onClick={() => setProfileTab("security")}
-              className={`px-6 py-3 text-sm font-semibold border-b-2 whitespace-nowrap transition-all duration-200 cursor-pointer ${
-                profileTab === "security"
-                  ? "border-indigo-500 text-white"
-                  : "border-transparent text-zinc-400 hover:text-zinc-200"
-              }`}
-            >
-              Security
-            </button>
           </div>
         </div>
 
         {/* =================================================================== */}
-        {/* TAB 1: RESUME (Strict View Only)                                    */}
+        {/* TAB 1: RESUME (Editable for Bio, Skills, Certifications)            */}
         {/* =================================================================== */}
         {profileTab === "resume" && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-150">
             
-            {/* Left Column: About & Stories (7 cols - View Only) */}
+            {/* Left Column: Bio Block */}
             <div className="lg:col-span-7 space-y-6">
               
-              {/* About */}
-              <div className="bg-zinc-900/60 border border-zinc-800/80 backdrop-blur-xl rounded-3xl p-6 space-y-3 text-left">
-                <div className="border-b border-zinc-800/60 pb-2">
-                  <h3 className="text-base font-semibold text-white">About</h3>
+              <div className="bg-zinc-900/60 border border-zinc-800/80 backdrop-blur-xl rounded-3xl p-6 sm:p-8 space-y-4 text-left">
+                <div className="flex items-center justify-between border-b border-zinc-800/60 pb-3">
+                  <h3 className="text-lg font-serif text-white">Bio</h3>
+                  <button
+                    onClick={() => setEditingBio(!editingBio)}
+                    className="px-3 py-1.5 text-xs font-semibold text-indigo-400 hover:text-indigo-300 border border-indigo-500/30 rounded-xl hover:bg-indigo-500/10 transition-colors cursor-pointer"
+                  >
+                    {editingBio ? "Cancel" : "Edit Bio"}
+                  </button>
                 </div>
-                <p className="text-sm text-zinc-300 leading-relaxed">
-                  {aboutText}
-                </p>
-              </div>
 
-              {/* What I love about my job */}
-              <div className="bg-zinc-900/60 border border-zinc-800/80 backdrop-blur-xl rounded-3xl p-6 space-y-3 text-left">
-                <div className="border-b border-zinc-800/60 pb-2">
-                  <h3 className="text-base font-semibold text-white">What I love about my job</h3>
-                </div>
-                <p className="text-sm text-zinc-300 leading-relaxed">
-                  {jobLoveText}
-                </p>
-              </div>
-
-              {/* My interests and hobbies */}
-              <div className="bg-zinc-900/60 border border-zinc-800/80 backdrop-blur-xl rounded-3xl p-6 space-y-3 text-left">
-                <div className="border-b border-zinc-800/60 pb-2">
-                  <h3 className="text-base font-semibold text-white">My interests and hobbies</h3>
-                </div>
-                <p className="text-sm text-zinc-300 leading-relaxed">
-                  {hobbiesText}
-                </p>
+                {editingBio ? (
+                  <div className="space-y-4">
+                    <textarea
+                      rows={10}
+                      value={bioText}
+                      onChange={(e) => setBioText(e.target.value)}
+                      placeholder="Enter bio text..."
+                      className="w-full p-4 bg-zinc-950 border border-zinc-800 rounded-2xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y font-sans leading-relaxed"
+                    />
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={handleSaveBio}
+                        disabled={profileLoading}
+                        className="px-5 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition-colors cursor-pointer disabled:opacity-50"
+                      >
+                        {profileLoading ? "Saving..." : "Save Bio"}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="min-h-[160px]">
+                    {bioText ? (
+                      <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap font-sans">
+                        {bioText}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-zinc-500 italic">null</p>
+                    )}
+                  </div>
+                )}
               </div>
 
             </div>
 
-            {/* Right Column: Skills & Certifications (5 cols - View Only) */}
+            {/* Right Column: Skills & Certifications */}
             <div className="lg:col-span-5 space-y-6">
               
-              {/* Skills */}
+              {/* Skills Card */}
               <div className="bg-zinc-900/60 border border-zinc-800/80 backdrop-blur-xl rounded-3xl p-6 space-y-4 text-left">
-                <div className="border-b border-zinc-800/60 pb-2">
+                <div className="flex items-center justify-between border-b border-zinc-800/60 pb-2">
                   <h3 className="text-base font-semibold text-white">Skills</h3>
+                  <button
+                    onClick={() => setShowAddSkill(!showAddSkill)}
+                    className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
+                  >
+                    + Add Skills
+                  </button>
                 </div>
 
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {skills.map((skill) => (
-                    <span
-                      key={skill}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-950/80 border border-zinc-800 text-zinc-200 text-xs font-medium"
+                {/* Add Skill Form */}
+                {showAddSkill && (
+                  <form onSubmit={handleAddSkill} className="flex gap-2">
+                    <input
+                      type="text"
+                      required
+                      value={newSkillInput}
+                      onChange={(e) => setNewSkillInput(e.target.value)}
+                      placeholder="e.g. Next.js, Python..."
+                      className="flex-1 px-3 py-1.5 bg-zinc-950 border border-zinc-800 rounded-xl text-white text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <button
+                      type="submit"
+                      disabled={profileLoading}
+                      className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-colors cursor-pointer disabled:opacity-50"
                     >
-                      {skill}
-                    </span>
-                  ))}
+                      Add
+                    </button>
+                  </form>
+                )}
+
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {skills.length > 0 ? (
+                    skills.map((skill) => (
+                      <span
+                        key={skill}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-950/80 border border-zinc-800 text-zinc-200 text-xs font-medium group hover:border-zinc-700 transition-colors"
+                      >
+                        <span>{skill}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveSkill(skill)}
+                          className="text-zinc-500 hover:text-rose-400 transition-colors cursor-pointer"
+                          title="Remove skill"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-zinc-500 italic">null</span>
+                  )}
                 </div>
               </div>
 
-              {/* Certification */}
+              {/* Certification Card */}
               <div className="bg-zinc-900/60 border border-zinc-800/80 backdrop-blur-xl rounded-3xl p-6 space-y-4 text-left">
-                <div className="border-b border-zinc-800/60 pb-2">
+                <div className="flex items-center justify-between border-b border-zinc-800/60 pb-2">
                   <h3 className="text-base font-semibold text-white">Certification</h3>
+                  <button
+                    onClick={() => setShowAddCert(!showAddCert)}
+                    className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
+                  >
+                    + Add Certification
+                  </button>
                 </div>
 
-                <div className="space-y-3">
-                  {certifications.map((cert, idx) => (
-                    <div
-                      key={idx}
-                      className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 flex items-start justify-between gap-3"
-                    >
-                      <div className="space-y-0.5">
-                        <h4 className="text-xs font-semibold text-white">{cert.name}</h4>
-                        <p className="text-[11px] text-zinc-400">{cert.issuer}</p>
-                      </div>
-                      <span className="px-2 py-0.5 text-[10px] font-mono font-semibold bg-zinc-800 text-zinc-300 rounded-md">
-                        {cert.year}
-                      </span>
+                {/* Add Certification Form */}
+                {showAddCert && (
+                  <form onSubmit={handleAddCert} className="space-y-2 bg-zinc-950/60 p-3 rounded-2xl border border-zinc-800">
+                    <input
+                      type="text"
+                      required
+                      value={newCertName}
+                      onChange={(e) => setNewCertName(e.target.value)}
+                      placeholder="Certification Title"
+                      className="w-full px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-xl text-white text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        value={newCertIssuer}
+                        onChange={(e) => setNewCertIssuer(e.target.value)}
+                        placeholder="Issuer (e.g. AWS)"
+                        className="w-full px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-xl text-white text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                      <input
+                        type="text"
+                        value={newCertYear}
+                        onChange={(e) => setNewCertYear(e.target.value)}
+                        placeholder="Year (e.g. 2024)"
+                        className="w-full px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-xl text-white text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
                     </div>
-                  ))}
+                    <div className="flex justify-end gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setShowAddCert(false)}
+                        className="px-3 py-1 text-xs text-zinc-400"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={profileLoading}
+                        className="px-3 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs disabled:opacity-50"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                <div className="space-y-3">
+                  {certifications.length > 0 ? (
+                    certifications.map((cert, idx) => (
+                      <div
+                        key={idx}
+                        className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 flex items-start justify-between gap-3"
+                      >
+                        <div className="space-y-0.5">
+                          <h4 className="text-xs font-semibold text-white">{cert.name}</h4>
+                          {cert.issuer && <p className="text-[11px] text-zinc-400">{cert.issuer}</p>}
+                        </div>
+                        {cert.year && (
+                          <span className="px-2 py-0.5 text-[10px] font-mono font-semibold bg-zinc-800 text-zinc-300 rounded-md">
+                            {cert.year}
+                          </span>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <span className="text-xs text-zinc-500 italic">null</span>
+                  )}
                 </div>
               </div>
 
@@ -345,11 +553,20 @@ export default function EmployeeProfilePage() {
         )}
 
         {/* =================================================================== */}
-        {/* TAB 2: PRIVATE INFO (Exact Wireframe Specification - View Only)     */}
+        {/* TAB 2: PRIVATE INFO (Strict View Only - No Edit)                     */}
         {/* =================================================================== */}
         {profileTab === "private_info" && (
           <div className="bg-zinc-900/60 border border-zinc-800 backdrop-blur-xl rounded-3xl p-6 sm:p-8 space-y-6 text-left animate-in fade-in duration-150">
             
+            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+              <h3 className="text-lg font-serif text-white">
+                Private Personal & Statutory Information
+              </h3>
+              <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                Strict View Only
+              </span>
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               
               {/* Left Column: Personal Information */}
@@ -361,44 +578,48 @@ export default function EmployeeProfilePage() {
                 <div className="space-y-3 text-xs sm:text-sm">
                   <div className="flex justify-between py-2 border-b border-zinc-800/50">
                     <span className="text-zinc-400 font-medium">Date of Birth:</span>
-                    <span className="text-white font-medium">{dob}</span>
+                    <span className="text-white font-medium">{dob || "null"}</span>
                   </div>
 
                   <div className="flex justify-between py-2 border-b border-zinc-800/50">
                     <span className="text-zinc-400 font-medium">Residing Address:</span>
-                    <span className="text-white font-medium text-right max-w-[260px]">{address}</span>
+                    <span className="text-white font-medium text-right max-w-[260px]">{location}</span>
                   </div>
 
                   <div className="flex justify-between py-2 border-b border-zinc-800/50">
                     <span className="text-zinc-400 font-medium">Nationality:</span>
-                    <span className="text-white font-medium">{nationality}</span>
+                    <span className="text-white font-medium">{nationality || "null"}</span>
                   </div>
 
                   <div className="flex justify-between py-2 border-b border-zinc-800/50">
                     <span className="text-zinc-400 font-medium">Personal Email:</span>
-                    <a href={`mailto:${personalEmail}`} className="text-indigo-400 hover:underline font-medium">
-                      {personalEmail}
-                    </a>
+                    {pEmail ? (
+                      <a href={`mailto:${pEmail}`} className="text-indigo-400 hover:underline font-medium">
+                        {pEmail}
+                      </a>
+                    ) : (
+                      <span className="text-white font-medium">null</span>
+                    )}
                   </div>
 
                   <div className="flex justify-between py-2 border-b border-zinc-800/50">
                     <span className="text-zinc-400 font-medium">Gender:</span>
-                    <span className="text-white font-medium">{gender}</span>
+                    <span className="text-white font-medium">{gender || "null"}</span>
                   </div>
 
                   <div className="flex justify-between py-2 border-b border-zinc-800/50">
                     <span className="text-zinc-400 font-medium">Marital Status:</span>
-                    <span className="text-white font-medium">{maritalStatus}</span>
+                    <span className="text-white font-medium">{maritalStatus || "null"}</span>
                   </div>
 
                   <div className="flex justify-between py-2">
                     <span className="text-zinc-400 font-medium">Date of Joining:</span>
-                    <span className="text-emerald-400 font-semibold">{doj}</span>
+                    <span className="text-emerald-400 font-semibold">{doj || "null"}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Right Column: Bank Details & Statutory IDs (from Wireframe) */}
+              {/* Right Column: Bank Details & Statutory IDs */}
               <div className="space-y-4">
                 <h3 className="text-base font-semibold text-white border-b border-zinc-800 pb-2">
                   Bank Details & Identifications
@@ -407,32 +628,27 @@ export default function EmployeeProfilePage() {
                 <div className="space-y-3 text-xs sm:text-sm">
                   <div className="flex justify-between py-2 border-b border-zinc-800/50">
                     <span className="text-zinc-400 font-medium">Account Number:</span>
-                    <span className="text-white font-mono font-medium">{accountNumber}</span>
+                    <span className="text-white font-mono font-medium">{accNumber || "null"}</span>
                   </div>
 
                   <div className="flex justify-between py-2 border-b border-zinc-800/50">
                     <span className="text-zinc-400 font-medium">Bank Name:</span>
-                    <span className="text-white font-medium">{bankName}</span>
+                    <span className="text-white font-medium">{bankName || "null"}</span>
                   </div>
 
                   <div className="flex justify-between py-2 border-b border-zinc-800/50">
                     <span className="text-zinc-400 font-medium">IFSC Code:</span>
-                    <span className="text-white font-mono font-medium">{ifscCode}</span>
+                    <span className="text-white font-mono font-medium">{ifscCode || "null"}</span>
                   </div>
 
                   <div className="flex justify-between py-2 border-b border-zinc-800/50">
                     <span className="text-zinc-400 font-medium">PAN No:</span>
-                    <span className="text-white font-mono font-medium">{panNo}</span>
-                  </div>
-
-                  <div className="flex justify-between py-2 border-b border-zinc-800/50">
-                    <span className="text-zinc-400 font-medium">UAN NO:</span>
-                    <span className="text-white font-mono font-medium">{uanNo}</span>
+                    <span className="text-white font-mono font-medium">{panNo || "null"}</span>
                   </div>
 
                   <div className="flex justify-between py-2">
-                    <span className="text-zinc-400 font-medium">Emp Code:</span>
-                    <span className="text-indigo-400 font-mono font-bold">{empCode}</span>
+                    <span className="text-zinc-400 font-medium">UAN NO:</span>
+                    <span className="text-white font-mono font-medium">{uanNo || "null"}</span>
                   </div>
                 </div>
               </div>
@@ -466,7 +682,7 @@ export default function EmployeeProfilePage() {
                 </div>
               </div>
 
-              {/* Basic Salary Overview Cards (Simple & Clean) */}
+              {/* Basic Salary Overview Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="p-5 bg-zinc-950/70 border border-zinc-800 rounded-2xl space-y-1.5">
                   <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Monthly Gross Wage</span>
@@ -479,7 +695,7 @@ export default function EmployeeProfilePage() {
                 </div>
               </div>
 
-              {/* Disbursement Info (Basic Summary) */}
+              {/* Disbursement Info */}
               <div className="p-5 bg-zinc-950/50 rounded-2xl border border-zinc-800/80 space-y-3">
                 <span className="text-xs font-semibold uppercase tracking-wider text-zinc-300 block border-b border-zinc-800/60 pb-2">
                   Disbursement & Account Information
@@ -492,7 +708,7 @@ export default function EmployeeProfilePage() {
                   </div>
                   <div>
                     <span className="text-zinc-400 block mb-1">Credited Account:</span>
-                    <span className="text-white font-mono font-medium">{bankName} ({accountNumber})</span>
+                    <span className="text-white font-mono font-medium">{bankName || "Silicon Valley Bank"} ({accNumber || "•••• •••• 9821"})</span>
                   </div>
                   <div>
                     <span className="text-zinc-400 block mb-1">Pay Cycle:</span>
@@ -507,49 +723,6 @@ export default function EmployeeProfilePage() {
                 </p>
               </div>
 
-            </div>
-          </div>
-        )}
-
-        {/* =================================================================== */}
-        {/* TAB 4: SECURITY (View-Only / Account Status)                         */}
-        {/* =================================================================== */}
-        {profileTab === "security" && (
-          <div className="bg-zinc-900/60 border border-zinc-800 backdrop-blur-xl rounded-3xl p-6 sm:p-8 space-y-6 text-left animate-in fade-in duration-150">
-            <h3 className="text-lg font-serif text-white border-b border-zinc-800 pb-3">
-              Account Security & Access
-            </h3>
-
-            <div className="space-y-4 max-w-xl text-xs sm:text-sm">
-              <div className="p-4 bg-zinc-950/60 border border-zinc-800/80 rounded-2xl flex items-center justify-between">
-                <div>
-                  <h4 className="font-semibold text-white">Two-Factor Authentication (2FA)</h4>
-                  <p className="text-xs text-zinc-400 mt-0.5">Enforces biometric/authenticator verification on login</p>
-                </div>
-                <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
-                  Active
-                </span>
-              </div>
-
-              <div className="p-4 bg-zinc-950/60 border border-zinc-800/80 rounded-2xl flex items-center justify-between">
-                <div>
-                  <h4 className="font-semibold text-white">Password Status</h4>
-                  <p className="text-xs text-zinc-400 mt-0.5">Last updated 18 days ago</p>
-                </div>
-                <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">
-                  Secured
-                </span>
-              </div>
-
-              <div className="p-4 bg-zinc-950/60 border border-zinc-800/80 rounded-2xl flex items-center justify-between">
-                <div>
-                  <h4 className="font-semibold text-white">Active Session</h4>
-                  <p className="text-xs text-zinc-400 mt-0.5">San Francisco, USA • Chrome on macOS / Windows</p>
-                </div>
-                <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
-                  Current
-                </span>
-              </div>
             </div>
           </div>
         )}
