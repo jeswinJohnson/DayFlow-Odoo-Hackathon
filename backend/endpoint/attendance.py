@@ -32,7 +32,6 @@ def check_out(
 
 
 @router.get("/get-all-attendance", response_model=GetAllAttendanceResponse)
-@router.get("/all", response_model=GetAllAttendanceResponse)
 def get_all_attendance(
     date: Optional[str] = Query(None, description="Date in YYYY-MM-DD format"),
     current_user: CurrentUser = Depends(get_current_user),
@@ -49,12 +48,10 @@ def get_employee_attendance_status(
     return af.get_employee_attendance_status(supabase, current_user)
 
 
-@router.get("/daily", response_model=UserDailyAttendanceResponse)
 @router.get("/user-daily", response_model=UserDailyAttendanceResponse)
 def get_user_daily_attendance(
     date: Optional[str] = Query(None, description="Date in YYYY-MM-DD format"),
-    employee_id: Optional[str] = Query(None, description="Employee ID (defaults to current user)"),
     current_user: CurrentUser = Depends(get_current_user),
     supabase: Client = Depends(get_supabase_auth),
 ):
-    return af.get_user_daily_attendance(supabase, current_user, date, employee_id)
+    return af.get_user_daily_attendance(supabase, current_user, date)

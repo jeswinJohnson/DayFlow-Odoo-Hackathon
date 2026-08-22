@@ -65,6 +65,16 @@ def check_out(supabase: Client, currentUser: CurrentUser) -> AttendanceActionRes
     )
 
 
+def get_employee_attendance_status(
+    supabase: Client, currentUser: CurrentUser
+) -> AttendanceStatusResponse:
+    result = _call_rpc_with_id(supabase, "get_employee_attendance_status", {"p_user_id": currentUser.id})
+    status_text = str(result) if result is not None else "absent"
+    return AttendanceStatusResponse(
+        employee_id=currentUser.id,
+        status=status_text,
+    )
+
 def get_all_attendance(
     supabase: Client, currentUser: CurrentUser, target_date: Optional[str] = None
 ) -> GetAllAttendanceResponse:
@@ -100,12 +110,7 @@ def get_all_attendance(
         print(f"Notice: get_all_attendance RPC call did not return directly, falling back to table query: {e}")
 
     # Fallback: Query all users belonging to the company and their attendance for target_date
-    query = supabase.table("users").select("id, first_name, last_name, dept_id")
-    if company_id:
-        query = query.eq("company_id", company_id)
-    comp_users_res = query.execute()
-    comp_users = comp_users_res.data or []
-    user_ids = [u["id"] for u in comp_users if "id" in u]
+    
 
     if not user_ids:
         return GetAllAttendanceResponse(date=target_date, records=[])
@@ -120,35 +125,19 @@ def get_all_attendance(
     records = att_res.data or []
     return GetAllAttendanceResponse(date=target_date, records=records)
 
-
-def get_employee_attendance_status(
-    supabase: Client, currentUser: CurrentUser
-) -> AttendanceStatusResponse:
-    result = _call_rpc_with_id(supabase, "get_employee_attendance_status", {"p_user_id": currentUser.id})
-    status_text = str(result) if result is not None else "absent"
-    return AttendanceStatusResponse(
-        employee_id=currentUser.id,
-        status=status_text,
-    )
-
-
 def get_user_daily_attendance(
     supabase: Client,
     currentUser: CurrentUser,
     target_date: Optional[str] = None,
-    employee_id: Optional[str] = None,
 ) -> UserDailyAttendanceResponse:
-    """
-    5. get_user_daily_attendance: for this rpc it gets the user's attendance for that day for the given date.
-    """
-    target_id = employee_id if employee_id else currentUser.id
+    target_id = currentUser.id
     if not target_date:
         target_date = datetime.date.today().isoformat()
 
     result = _call_rpc_with_id(
         supabase,
         "get_user_daily_attendance",
-        {"id": target_id, "date": target_date},
+        {"p_user_id": target_id, "p_date": target_date},
     )
     return UserDailyAttendanceResponse(
         employee_id=target_id,
