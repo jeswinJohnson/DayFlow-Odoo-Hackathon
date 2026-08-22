@@ -1,13 +1,15 @@
 
 
 import datetime
+import secrets
 from typing import List
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 from postgrest import APIResponse
 from supabase import Client
 
-from schema.auth import CurrentUser
-from schema.profile import MyProfile, EditProfile, EmployeeDirectory
+from schema.auth import CurrentUser, BundleType
+from schema.profile import MyProfile, EditProfile, EmployeeDirectory, CreateUserRequest, CreateUserResponse
+from supabase_auth import AdminUserAttributes
 
 
 def get_my_profile(supabase: Client, currentUser:CurrentUser) -> MyProfile:
@@ -20,6 +22,7 @@ def get_my_profile(supabase: Client, currentUser:CurrentUser) -> MyProfile:
             email,
             personal_email,
             location,
+            designation,
             bio,
             skills,
             certification,
@@ -61,6 +64,7 @@ def get_my_profile(supabase: Client, currentUser:CurrentUser) -> MyProfile:
     return MyProfile(
         f_name=data.get("first_name"),
         l_name=data.get("last_name"),
+        designation=data.get("designation"),
         email=data.get("email"),
         comp_name=comp_name,
         dept_name=dept_name,
@@ -158,4 +162,137 @@ def get_company_directory(supabase: Client, currentUser: CurrentUser) -> List[Em
         )
 
     return directory
+
+
+def create_user(
+    supabase: Client,
+    currentUser: CurrentUser,
+    user_data: CreateUserRequest,
+    supabase_admin: Client = None,
+) -> CreateUserResponse:
+    role_val = currentUser.role
+
+    if role_val != BundleType.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admin users can create new users",
+        )
+
+    admin_client = supabase_admin if supabase_admin is not None else supabase
+
+    # Get admin's company_id from users table
+    admin_res = (
+        supabase.table("users")
+        .select("company_id")
+        .eq("id", currentUser.id)
+        .single()
+        .execute()
+    )
+    admin_data = admin_res.data or {}
+    company_id = admin_data.get("company_id")
+
+    if not company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Admin user is not associated with any company",
+        )
+
+    # Retrieve emp_index from companies table
+    comp_res = (
+        admin_client.table("companies")
+        .select("emp_index")
+        .eq("id", company_id)
+        .single()
+        .execute()
+    )
+    comp_data = comp_res.data or {}
+    emp_index_raw = comp_data.get("emp_index")
+
+    if emp_index_raw is None:
+        emp_index = 1
+    else:
+        try:
+            emp_index = int(emp_index_raw)
+        except (ValueError, TypeError):
+            emp_index = 1
+
+    # Generate employee_id: first 2 letters of first_name and last_name + padded emp_index
+    fn_clean = user_data.first_name.strip()
+    ln_clean = user_data.last_name.strip()
+
+    fn_code = (fn_clean[:2] if len(fn_clean) >= 2 else (fn_clean + "X")[:2]).upper()
+    ln_code = (ln_clean[:2] if len(ln_clean) >= 2 else (ln_clean + "X")[:2]).upper()
+
+    padded_index = f"{emp_index:04d}"
+    employee_id = f"{fn_code}{ln_code}{padded_index}"
+
+    # Increment emp_index in companies table using admin_client
+    admin_client.table("companies").update({"emp_index": emp_index + 1}).eq("id", company_id).execute()
+
+    # Generate random password
+    random_password = "qwerty"
+
+    # Create auth user in Supabase Auth using admin_client
+    auth_user_uid = None
+    try:
+        auth_res = admin_client.auth.admin.create_user(
+            AdminUserAttributes(
+                email=user_data.email,
+                password=random_password,
+                email_confirm=True,
+                user_metadata={
+                    "first_name": user_data.first_name,
+                    "last_name": user_data.last_name,
+                },
+            )
+        )
+        if auth_res and hasattr(auth_res, "user") and auth_res.user:
+            auth_user_uid = auth_res.user.id
+    except Exception as e:
+        print(f"Error creating Supabase auth user with admin client: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to create auth user: {str(e)}",
+        )
+
+    # Convert dept_id to int if integer-like
+    dept_id_val = user_data.department_id
+    if isinstance(dept_id_val, str) and dept_id_val.isdigit():
+        dept_id_val = int(dept_id_val)
+
+    # Insert into users table using admin_client
+    user_payload = {
+        "id": employee_id,
+        "first_name": user_data.first_name,
+        "last_name": user_data.last_name,
+        "email": user_data.email,
+        "phone": user_data.phone,
+        "dept_id": dept_id_val,
+        "company_id": company_id,
+        "role": "employee",
+        "uid": str(auth_user_uid) if auth_user_uid else None,
+    }
+
+    insert_res = admin_client.table("users").insert(user_payload).execute()
+    inserted_records = insert_res.data or []
+    inserted_user = inserted_records[0] if inserted_records else {}
+
+    return CreateUserResponse(
+        id=str(inserted_user.get("id") or employee_id),
+        employee_id=employee_id,
+        uid=str(auth_user_uid) if auth_user_uid else None,
+        first_name=user_data.first_name,
+        last_name=user_data.last_name,
+        email=user_data.email,
+        password=random_password,
+        phone=user_data.phone,
+        department_id=user_data.department_id,
+        company_id=company_id,
+        role="employee",
+        message=f"User created successfully. Generated Employee ID: {employee_id}",
+    )
+
+
+
+
 

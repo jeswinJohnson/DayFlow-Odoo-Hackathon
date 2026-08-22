@@ -206,6 +206,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         throw new Error("No active session found");
       }
 
+      console.log(session.access_token)
+
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND;
       const response = await fetch(`${backendUrl}/v1/${endpoints}`, {
         method: "GET",

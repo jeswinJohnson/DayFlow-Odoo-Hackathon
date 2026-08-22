@@ -19,6 +19,17 @@ def get_supabase_auth(
     )
     return client
 
+def get_supabase_admin():
+    supabase:Client = create_client(
+        settings.SUPABASE_URL, 
+        settings.SUPABASE_ADMIN_KEY,
+        options=ClientOptions(
+            auto_refresh_token=False,  # Stops token tracking
+            persist_session=False,     # Prevents saving session data
+        )
+    )
+    return supabase
+
 def get_current_user(
     payload: dict = Depends(verify_token),
     supabase: Client = Depends(get_supabase_auth)

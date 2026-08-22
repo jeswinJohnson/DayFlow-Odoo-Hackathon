@@ -1,7 +1,7 @@
 
 
 import datetime
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from pydantic import BaseModel
 
@@ -10,6 +10,7 @@ class MyProfile(BaseModel):
     l_name: str
     email: str
     comp_name: str
+    designation: Optional[str]
     dept_name: Optional[str]
     location: Optional[str]
     bio: Optional[str]
@@ -58,6 +59,32 @@ class EmployeeDirectory(BaseModel):
     phone: Optional[str] = None
     bio: Optional[str] = None
     location: Optional[str] = None
+
+
+class CreateUserRequest(BaseModel):
+    first_name: str
+    last_name: str
+    email: str
+    phone: Optional[str] = None
+    department_id: Union[int, str]
+
+
+class CreateUserResponse(BaseModel):
+    id: str
+    employee_id: str
+    uid: Optional[str] = None
+    first_name: str
+    last_name: str
+    email: str
+    password: Optional[str] = None
+    phone: Optional[str] = None
+    department_id: Union[int, str]
+    company_id: Optional[Union[int, str]] = None
+    role: str = "employee"
+    message: str = "User created successfully"
+
+
+
 
 
 
