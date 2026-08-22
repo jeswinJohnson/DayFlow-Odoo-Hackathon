@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useApp } from "@/context/AppContext";
 
 interface DashboardHeaderProps {
@@ -41,7 +43,8 @@ export function DashboardHeader({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const userDisplayName = activeUser?.name || activeUser?.email?.split("@")[0] || "Employee";
+  const router = useRouter();
+  const userDisplayName = activeUser?.name || activeUser?.email?.split("@")[0] || "Alex Morgan";
   const userInitial = userDisplayName.charAt(0).toUpperCase();
 
   return (
@@ -51,7 +54,7 @@ export function DashboardHeader({
         {/* Left: Brand Logo & Navigation Tabs */}
         <div className="flex items-center gap-6 lg:gap-10">
           {/* Logo */}
-          <div className="flex items-center gap-3 select-none">
+          <Link href="/" className="flex items-center gap-3 select-none hover:opacity-90 transition-opacity">
             <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 shadow-md flex items-center justify-center p-1.5 relative overflow-hidden flex-shrink-0">
               <div className="absolute -top-2 -right-2 w-6 h-6 bg-amber-500/30 rounded-full blur-md" />
               <div className="absolute -bottom-2 -left-2 w-6 h-6 bg-blue-600/40 rounded-full blur-md" />
@@ -64,13 +67,19 @@ export function DashboardHeader({
             <span className="font-bold text-white tracking-tight text-xl sm:text-2xl font-sans">
               DayFlow
             </span>
-          </div>
+          </Link>
 
           {/* Module Navigation Tabs */}
           <nav className="hidden sm:flex items-center gap-1 bg-zinc-900/80 p-1 rounded-xl border border-zinc-800/80">
             <button
-              onClick={() => setActiveTab("employees")}
-              className={`px-4 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer ${
+              onClick={() => {
+                if (window.location.pathname !== "/") {
+                  router.push("/?tab=employees");
+                } else {
+                  setActiveTab("employees");
+                }
+              }}
+              className={`px-4 py-1.5 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 cursor-pointer ${
                 activeTab === "employees"
                   ? "bg-indigo-600 text-white shadow-sm"
                   : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
@@ -79,8 +88,14 @@ export function DashboardHeader({
               Employees
             </button>
             <button
-              onClick={() => setActiveTab("attendance")}
-              className={`px-4 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer ${
+              onClick={() => {
+                if (window.location.pathname !== "/") {
+                  router.push("/?tab=attendance");
+                } else {
+                  setActiveTab("attendance");
+                }
+              }}
+              className={`px-4 py-1.5 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 cursor-pointer ${
                 activeTab === "attendance"
                   ? "bg-indigo-600 text-white shadow-sm"
                   : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
@@ -89,8 +104,14 @@ export function DashboardHeader({
               Attendance
             </button>
             <button
-              onClick={() => setActiveTab("time_off")}
-              className={`px-4 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer ${
+              onClick={() => {
+                if (window.location.pathname !== "/") {
+                  router.push("/?tab=time_off");
+                } else {
+                  setActiveTab("time_off");
+                }
+              }}
+              className={`px-4 py-1.5 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 cursor-pointer ${
                 activeTab === "time_off"
                   ? "bg-indigo-600 text-white shadow-sm"
                   : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
@@ -109,7 +130,7 @@ export function DashboardHeader({
             <button
               onClick={() => setShowSystrayMenu(!showSystrayMenu)}
               title={isCheckedIn ? `Checked In since ${checkInTime}` : "Checked Out"}
-              className={`flex items-center gap-2.5 px-3 py-1.5 rounded-xl border transition-all duration-200 cursor-pointer select-none active:scale-95 ${
+              className={`flex items-center gap-2.5 px-3 py-1.5 rounded-xl border transition-all duration-200 cursor-pointer select-none active:scale-[0.99] ${
                 isCheckedIn
                   ? "bg-emerald-950/40 border-emerald-800/50 hover:bg-emerald-950/60"
                   : "bg-rose-950/40 border-rose-800/50 hover:bg-rose-950/60"
@@ -178,7 +199,7 @@ export function DashboardHeader({
                     onToggleCheckIn();
                     setShowSystrayMenu(false);
                   }}
-                  className={`w-full py-2.5 px-3 rounded-xl text-xs font-semibold transition-all duration-200 active:scale-95 flex items-center justify-center gap-2 cursor-pointer ${
+                  className={`w-full py-2.5 px-3 rounded-xl text-xs font-bold transition-all duration-200 active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer ${
                     isCheckedIn
                       ? "bg-rose-600 hover:bg-rose-500 text-white"
                       : "bg-emerald-600 hover:bg-emerald-500 text-white"
@@ -206,7 +227,7 @@ export function DashboardHeader({
               onClick={() => setShowAvatarMenu(!showAvatarMenu)}
               className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-600 p-0.5 shadow-md flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
             >
-              <div className="w-full h-full rounded-full bg-zinc-900 overflow-hidden flex items-center justify-center text-white font-semibold text-sm">
+              <div className="w-full h-full rounded-full bg-zinc-900 overflow-hidden flex items-center justify-center text-white font-bold text-sm">
                 {userInitial}
               </div>
             </button>
@@ -216,21 +237,19 @@ export function DashboardHeader({
               <div className="absolute right-0 mt-2 w-52 bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl p-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
                 <div className="px-3 py-2 border-b border-zinc-800/80 mb-1">
                   <p className="text-xs font-semibold text-white truncate">{userDisplayName}</p>
-                  <p className="text-[11px] text-zinc-500 truncate">{activeUser?.email}</p>
+                  <p className="text-[11px] text-zinc-500 truncate">{activeUser?.email || "alex.morgan@dayflow.internal"}</p>
                 </div>
 
-                <button
-                  onClick={() => {
-                    setShowAvatarMenu(false);
-                    onOpenMyProfile();
-                  }}
-                  className="w-full text-left px-3 py-2 text-xs text-zinc-300 hover:text-white hover:bg-zinc-800/80 rounded-xl transition-colors flex items-center gap-2.5 cursor-pointer"
+                <Link
+                  href="/profile"
+                  onClick={() => setShowAvatarMenu(false)}
+                  className="w-full text-left px-3 py-2 text-xs font-medium text-zinc-300 hover:text-white hover:bg-zinc-800/80 rounded-xl transition-colors flex items-center gap-2.5 cursor-pointer"
                 >
                   <svg className="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                   My Profile
-                </button>
+                </Link>
 
                 <button
                   onClick={async () => {
