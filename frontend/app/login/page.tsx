@@ -32,12 +32,16 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      await login(identifier, password);
+      const resp = await login(identifier, password);
+      if (!resp) {
+        setLoading(false);
+        return;
+      }
       toast.success("Successfully logged in!");
       router.push("/");
     } catch (err: any) {
       console.error("Login error:", err);
-      toast.error(err.message || "Failed to sign in. Please check your credentials.");
+      toast.error("Failed to sign in. Please check your credentials.");
     } finally {
       setLoading(false);
     }
