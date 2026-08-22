@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useApp } from "@/context/AppContext";
 import { DashboardHeader } from "@/components";
@@ -8,6 +8,9 @@ import toast from "react-hot-toast";
 
 export default function ProfilePage() {
   const { activeUser } = useApp();
+
+  // Role Access (Admin View)
+  const isAdmin = true;
 
   // Navigation State
   const [activeNavTab, setActiveNavTab] = useState<"employees" | "attendance" | "time_off">("employees");
@@ -18,19 +21,19 @@ export default function ProfilePage() {
   const [checkInTime, setCheckInTime] = useState<string | null>("08:45 AM");
 
   // Profile Header State
-  const [name, setName] = useState(activeUser?.name || "Alex Morgan");
+  const [name] = useState(activeUser?.name || "Alex Morgan");
   const [loginId] = useState(activeUser?.uid || activeUser?.id || "EMP-001");
-  const [email, setEmail] = useState(activeUser?.email || "alex.morgan@dayflow.internal");
-  const [mobile, setMobile] = useState("+1 (555) 234-5678");
-  const [company, setCompany] = useState("DayFlow Technologies Inc.");
-  const [department, setDepartment] = useState(activeUser?.department_name || "Engineering");
-  const [manager, setManager] = useState("Elena Rostova (VP of People)");
-  const [location, setLocation] = useState("Floor 4 - Tech Bay A, San Francisco HQ");
-  const [avatar, setAvatar] = useState(
+  const [email] = useState(activeUser?.email || "alex.morgan@dayflow.internal");
+  const [mobile] = useState("+1 (555) 234-5678");
+  const [company] = useState("DayFlow Technologies Inc.");
+  const [department] = useState(activeUser?.department_name || "Engineering");
+  const [manager] = useState("Elena Rostova (VP of People)");
+  const [location] = useState("Floor 4 - Tech Bay A, San Francisco HQ");
+  const [avatar] = useState(
     "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80"
   );
 
-  // Resume Tab Content State (from Wireframe)
+  // Resume Tab Content State
   const [aboutText, setAboutText] = useState(
     "Lead software architect specializing in distributed cloud infrastructure, real-time sync engines, and resilient enterprise web architecture. Passionate about craftsmanship, high-velocity developer experience, and product excellence."
   );
@@ -72,6 +75,80 @@ export default function ProfilePage() {
   const [newCertIssuer, setNewCertIssuer] = useState("");
   const [newCertYear, setNewCertYear] = useState("");
   const [showAddCert, setShowAddCert] = useState(false);
+
+  // =========================================================================
+  // SALARY INFORMATION STATE & AUTOMATIC ACCURATE CALCULATION ENGINE
+  // Using string state for smooth backspace/editing without stuck zeros
+  // =========================================================================
+  const [monthlyWageStr, setMonthlyWageStr] = useState<string>("50000");
+  const [workingDaysStr, setWorkingDaysStr] = useState<string>("5");
+  const [workingDaysError, setWorkingDaysError] = useState<string>("");
+  const [breakTimeStr, setBreakTimeStr] = useState<string>("1");
+
+  // Real-time Salary Breakdown Engine
+  const salaryCalculations = useMemo(() => {
+    const parsedWage = parseFloat(monthlyWageStr.replace(/[^0-9.]/g, "")) || 0;
+    const wage = Math.max(0, parsedWage);
+    const yearly = wage * 12;
+
+    // 1. Basic Salary = 50.00% of Monthly Wage
+    const basic = wage * 0.50;
+
+    // 2. House Rent Allowance (HRA) = 50.00% of Basic Salary
+    const hra = basic * 0.50;
+
+    // 3. Standard Allowance = 16.67% of Basic Salary (exact 4,167 for 25k basic)
+    const standardAllowance = Math.round(basic * (16.668 / 100) * 100) / 100;
+
+    // 4. Performance Bonus = 8.33% of Basic Salary (exact 2,082.50 for 25k basic)
+    const performanceBonus = Math.round(basic * (8.33 / 100) * 100) / 100;
+
+    // 5. Leave Travel Allowance (LTA) = 8.33% of Basic Salary (exact 2,082.50 for 25k basic)
+    const lta = Math.round(basic * (8.33 / 100) * 100) / 100;
+
+    // 6. Fixed Allowance = Balance to equal Monthly Wage
+    const sumOther = basic + hra + standardAllowance + performanceBonus + lta;
+    const fixedAllowance = Math.max(0, Math.round((wage - sumOther) * 100) / 100);
+    const fixedAllowancePct = basic > 0 ? (fixedAllowance / basic) * 100 : 0;
+
+    // 7. Provident Fund (PF) Contribution = 12.00% of Basic Salary
+    const employeePF = Math.round(basic * 0.12 * 100) / 100;
+    const employerPF = Math.round(basic * 0.12 * 100) / 100;
+
+    // 8. Tax Deductions = Fixed ₹200 Professional Tax
+    const professionalTax = wage > 0 ? 200 : 0;
+
+    // 9. Total Deductions & Net Take-Home Pay
+    const totalDeductions = employeePF + professionalTax;
+    const netTakeHome = Math.max(0, Math.round((wage - totalDeductions) * 100) / 100);
+
+    return {
+      wage,
+      yearly,
+      basic,
+      hra,
+      standardAllowance,
+      performanceBonus,
+      lta,
+      fixedAllowance,
+      fixedAllowancePct,
+      employeePF,
+      employerPF,
+      professionalTax,
+      totalDeductions,
+      netTakeHome,
+    };
+  }, [monthlyWageStr]);
+
+  // Currency Formatter
+  const formatCurrency = (val: number) => {
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(val);
+  };
 
   // Toggle Check In / Out
   const handleToggleCheckIn = () => {
@@ -145,7 +222,7 @@ export default function ProfilePage() {
       {/* Main Profile Container */}
       <main className="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
         
-        {/* Title Bar & Back Navigation (Exact Wireframe Architecture) */}
+        {/* Title Bar & Back Navigation */}
         <div className="flex items-center justify-between border-b border-zinc-800/80 pb-4">
           <div className="flex items-center gap-3">
             <Link
@@ -169,11 +246,11 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Hero Profile Info Card (Exact Wireframe Layout) */}
+        {/* Hero Profile Info Card */}
         <div className="w-full bg-zinc-900/70 border border-zinc-800 backdrop-blur-xl rounded-3xl p-6 sm:p-8 shadow-xl">
           <div className="flex flex-col lg:flex-row items-start lg:items-center gap-6 lg:gap-10">
             
-            {/* Profile Avatar (Non-editable view) */}
+            {/* Profile Avatar (Read-Only) */}
             <div className="relative flex-shrink-0">
               <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden bg-zinc-800 border-2 border-zinc-700 shadow-xl">
                 <img
@@ -184,7 +261,7 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Profile Metadata (Dual Column Layout as in Wireframe) */}
+            {/* Profile Metadata */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1 w-full text-left">
               
               {/* Left Column: Name, Login ID, Email, Mobile */}
@@ -241,7 +318,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Profile Sub-Tabs Navigation (Resume | Private Info | Salary Info) */}
+        {/* Profile Sub-Tabs Navigation */}
         <div className="border-b border-zinc-800">
           <div className="flex items-center gap-2">
             <button
@@ -266,16 +343,19 @@ export default function ProfilePage() {
               Private Info
             </button>
 
-            <button
-              onClick={() => setProfileTab("salary_info")}
-              className={`px-6 py-3 text-sm font-semibold border-b-2 transition-all duration-200 cursor-pointer ${
-                profileTab === "salary_info"
-                  ? "border-indigo-500 text-white"
-                  : "border-transparent text-zinc-400 hover:text-zinc-200"
-              }`}
-            >
-              Salary Info
-            </button>
+            {/* Salary Info Tab (No admin badge beside title) */}
+            {isAdmin && (
+              <button
+                onClick={() => setProfileTab("salary_info")}
+                className={`px-6 py-3 text-sm font-semibold border-b-2 transition-all duration-200 cursor-pointer ${
+                  profileTab === "salary_info"
+                    ? "border-indigo-500 text-white"
+                    : "border-transparent text-zinc-400 hover:text-zinc-200"
+                }`}
+              >
+                Salary Info
+              </button>
+            )}
           </div>
         </div>
 
@@ -585,42 +665,323 @@ export default function ProfilePage() {
         )}
 
         {/* =================================================================== */}
-        {/* TAB 3: SALARY INFO                                                  */}
+        {/* TAB 3: SALARY INFO (ACCURATE REAL-TIME CALCULATION - ADMIN ONLY)   */}
         {/* =================================================================== */}
-        {profileTab === "salary_info" && (
-          <div className="bg-zinc-900/60 border border-zinc-800 backdrop-blur-xl rounded-3xl p-6 sm:p-8 space-y-6 text-left animate-in fade-in duration-150">
-            <h3 className="text-lg font-serif text-white border-b border-zinc-800 pb-3">
-              Compensation & Salary Details
-            </h3>
+        {profileTab === "salary_info" && isAdmin && (
+          <div className="space-y-6 animate-in fade-in duration-150">
+            
+            {/* Top Wage Input & Schedule Config (From Wireframe) */}
+            <div className="w-full bg-zinc-900/70 border border-zinc-800 backdrop-blur-xl rounded-3xl p-6 sm:p-8 shadow-xl space-y-6">
+              
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800/80 pb-4">
+                <div>
+                  <h3 className="text-xl font-serif text-white tracking-tight">
+                    Salary Information & Structure
+                  </h3>
+                  <p className="text-xs text-zinc-400 mt-0.5">
+                    Define base monthly wages. All components and statutory deductions auto-compute in real-time.
+                  </p>
+                </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="p-5 bg-zinc-950/60 border border-zinc-800/80 rounded-2xl space-y-1">
-                <span className="text-xs text-zinc-400 font-medium uppercase tracking-wider">Base Salary</span>
-                <p className="text-2xl font-bold text-white font-mono">$165,000 <span className="text-xs font-normal text-zinc-400">/ yr</span></p>
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1 text-xs font-semibold uppercase tracking-wider rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-400">
+                    Wage Type: Fixed Wage
+                  </span>
+                </div>
               </div>
 
-              <div className="p-5 bg-zinc-950/60 border border-zinc-800/80 rounded-2xl space-y-1">
-                <span className="text-xs text-zinc-400 font-medium uppercase tracking-wider">Pay Frequency</span>
-                <p className="text-2xl font-bold text-indigo-300">Semi-Monthly</p>
+              {/* Monthly & Yearly Wage Row + Working Days Config (No Spinner Arrows, Smooth typing) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-left">
+                
+                {/* Monthly Wage Input */}
+                <div className="p-4 bg-zinc-950/70 border border-zinc-800 rounded-2xl space-y-1.5">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-300">
+                    Monthly Wage
+                  </label>
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-zinc-400 text-sm font-mono select-none">
+                      ₹
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={monthlyWageStr}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9]/g, "");
+                        setMonthlyWageStr(val);
+                      }}
+                      className="w-full pl-7 pr-16 py-2 bg-zinc-900 border border-zinc-700/80 rounded-xl text-white font-mono font-bold text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-zinc-400 text-xs font-medium select-none pointer-events-none">
+                      / Month
+                    </span>
+                  </div>
+                </div>
+
+                {/* Yearly Wage (Auto-Computed) */}
+                <div className="p-4 bg-zinc-950/70 border border-zinc-800 rounded-2xl space-y-1.5">
+                  <span className="block text-xs font-semibold uppercase tracking-wider text-zinc-300">
+                    Yearly Wage
+                  </span>
+                  <div className="flex items-center justify-between py-2 px-3 bg-zinc-900/60 rounded-xl border border-zinc-800/80">
+                    <span className="text-white font-mono font-bold text-base">
+                      {formatCurrency(salaryCalculations.yearly)}
+                    </span>
+                    <span className="text-zinc-400 text-xs font-medium select-none">
+                      / Yearly
+                    </span>
+                  </div>
+                </div>
+
+                {/* Working Days Config (Validated strictly 1 - 7 with error message) */}
+                <div className="p-4 bg-zinc-950/70 border border-zinc-800 rounded-2xl space-y-1.5">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-300">
+                    Number of working days in a week
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={workingDaysStr}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9]/g, "");
+                        setWorkingDaysStr(val);
+                        if (val === "") {
+                          setWorkingDaysError("");
+                          return;
+                        }
+                        const num = parseInt(val, 10);
+                        if (num < 1 || num > 7) {
+                          setWorkingDaysError("Please enter a valid number (1 - 7)");
+                          toast.error("Please enter a valid number between 1 and 7.");
+                        } else {
+                          setWorkingDaysError("");
+                        }
+                      }}
+                      className={`w-full px-3 py-2 pr-12 bg-zinc-900 border rounded-xl text-white font-mono font-bold text-sm focus:outline-none transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                        workingDaysError
+                          ? "border-rose-500/80 focus:ring-2 focus:ring-rose-500/50"
+                          : "border-zinc-700/80 focus:ring-2 focus:ring-indigo-500"
+                      }`}
+                    />
+                    <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-zinc-400 text-xs select-none pointer-events-none">
+                      Days
+                    </span>
+                  </div>
+                  {workingDaysError && (
+                    <p className="text-[11px] text-rose-400 font-medium animate-in fade-in duration-150">
+                      {workingDaysError}
+                    </p>
+                  )}
+                </div>
+
+                {/* Break Time Config (Validated up to 24 hrs) */}
+                <div className="p-4 bg-zinc-950/70 border border-zinc-800 rounded-2xl space-y-1.5">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-300">
+                    Break Time
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={breakTimeStr}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9.]/g, "");
+                        const num = parseFloat(val);
+                        if (val === "" || (num >= 0 && num <= 24)) {
+                          setBreakTimeStr(val);
+                        }
+                      }}
+                      className="w-full px-3 py-2 pr-12 bg-zinc-900 border border-zinc-700/80 rounded-xl text-white font-mono font-bold text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-zinc-400 text-xs select-none pointer-events-none">
+                      / hrs
+                    </span>
+                  </div>
+                </div>
+
               </div>
 
-              <div className="p-5 bg-zinc-950/60 border border-zinc-800/80 rounded-2xl space-y-1">
-                <span className="text-xs text-zinc-400 font-medium uppercase tracking-wider">Next Payroll Date</span>
-                <p className="text-2xl font-bold text-emerald-400">Sep 01, 2026</p>
-              </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-              <div className="p-4 bg-zinc-950/40 border border-zinc-800/60 rounded-2xl space-y-1">
-                <span className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Bank Account</span>
-                <p className="text-sm font-mono text-zinc-200">Chase Bank •••• 4892 (Direct Deposit)</p>
+            {/* Salary Breakdown & Statutory Deductions Grid (Exact Clean Wireframe Layout) */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              
+              {/* Left Column: Salary Components (7 cols) */}
+              <div className="lg:col-span-7 bg-zinc-900/60 border border-zinc-800/80 backdrop-blur-xl rounded-3xl p-6 sm:p-7 space-y-4 text-left">
+                <div className="border-b border-zinc-800/60 pb-3">
+                  <h4 className="text-base font-semibold text-white">Salary Components</h4>
+                </div>
+
+                <div className="space-y-3">
+                  
+                  {/* 1. Basic Salary */}
+                  <div className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 flex items-center justify-between">
+                    <span className="font-semibold text-sm text-white">Basic Salary</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-indigo-300 text-sm">
+                        {formatCurrency(salaryCalculations.basic)}
+                      </span>
+                      <span className="px-2 py-0.5 text-[11px] font-mono font-semibold rounded bg-zinc-800 text-zinc-300 border border-zinc-700 min-w-[56px] text-center">
+                        50.00 %
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 2. House Rent Allowance (HRA) */}
+                  <div className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 flex items-center justify-between">
+                    <span className="font-semibold text-sm text-white">House Rent Allowance</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-indigo-300 text-sm">
+                        {formatCurrency(salaryCalculations.hra)}
+                      </span>
+                      <span className="px-2 py-0.5 text-[11px] font-mono font-semibold rounded bg-zinc-800 text-zinc-300 border border-zinc-700 min-w-[56px] text-center">
+                        50.00 %
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 3. Standard Allowance */}
+                  <div className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 flex items-center justify-between">
+                    <span className="font-semibold text-sm text-white">Standard Allowance</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-indigo-300 text-sm">
+                        {formatCurrency(salaryCalculations.standardAllowance)}
+                      </span>
+                      <span className="px-2 py-0.5 text-[11px] font-mono font-semibold rounded bg-zinc-800 text-zinc-300 border border-zinc-700 min-w-[56px] text-center">
+                        16.67 %
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 4. Performance Bonus */}
+                  <div className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 flex items-center justify-between">
+                    <span className="font-semibold text-sm text-white">Performance Bonus</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-indigo-300 text-sm">
+                        {formatCurrency(salaryCalculations.performanceBonus)}
+                      </span>
+                      <span className="px-2 py-0.5 text-[11px] font-mono font-semibold rounded bg-zinc-800 text-zinc-300 border border-zinc-700 min-w-[56px] text-center">
+                        8.33 %
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 5. Leave Travel Allowance (LTA) */}
+                  <div className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 flex items-center justify-between">
+                    <span className="font-semibold text-sm text-white">Leave Travel Allowance</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-indigo-300 text-sm">
+                        {formatCurrency(salaryCalculations.lta)}
+                      </span>
+                      <span className="px-2 py-0.5 text-[11px] font-mono font-semibold rounded bg-zinc-800 text-zinc-300 border border-zinc-700 min-w-[56px] text-center">
+                        8.33 %
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 6. Fixed Allowance */}
+                  <div className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 flex items-center justify-between">
+                    <span className="font-semibold text-sm text-white">Fixed Allowance</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-indigo-300 text-sm">
+                        {formatCurrency(salaryCalculations.fixedAllowance)}
+                      </span>
+                      <span className="px-2 py-0.5 text-[11px] font-mono font-semibold rounded bg-zinc-800 text-zinc-300 border border-zinc-700 min-w-[56px] text-center">
+                        {salaryCalculations.fixedAllowancePct.toFixed(2)} %
+                      </span>
+                    </div>
+                  </div>
+
+                </div>
               </div>
 
-              <div className="p-4 bg-zinc-950/40 border border-zinc-800/60 rounded-2xl space-y-1">
-                <span className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Tax Identification (SSN)</span>
-                <p className="text-sm font-mono text-zinc-200">•••-••-6789 (Verified)</p>
+              {/* Right Column: PF, Deductions, and Themed Net Take-Home (5 cols) */}
+              <div className="lg:col-span-5 space-y-6 text-left">
+                
+                {/* Provident Fund (PF) Contribution */}
+                <div className="bg-zinc-900/60 border border-zinc-800/80 backdrop-blur-xl rounded-3xl p-6 space-y-4">
+                  <div className="flex items-center justify-between border-b border-zinc-800/60 pb-2">
+                    <h4 className="text-base font-semibold text-white">Provident Fund (PF)</h4>
+                    <span className="text-xs text-zinc-400">Statutory</span>
+                  </div>
+
+                  <div className="space-y-3">
+                    {/* Employee PF */}
+                    <div className="p-3.5 bg-zinc-950/60 rounded-2xl border border-zinc-800/80 flex items-center justify-between">
+                      <span className="text-zinc-300 font-semibold text-xs">Employee PF</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono font-bold text-white text-xs">
+                          {formatCurrency(salaryCalculations.employeePF)}
+                        </span>
+                        <span className="text-[10px] font-mono bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-300">
+                          12.00 %
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Employer PF */}
+                    <div className="p-3.5 bg-zinc-950/60 rounded-2xl border border-zinc-800/80 flex items-center justify-between">
+                      <span className="text-zinc-300 font-semibold text-xs">Employer's PF</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono font-bold text-white text-xs">
+                          {formatCurrency(salaryCalculations.employerPF)}
+                        </span>
+                        <span className="text-[10px] font-mono bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-300">
+                          12.00 %
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tax Deductions */}
+                <div className="bg-zinc-900/60 border border-zinc-800/80 backdrop-blur-xl rounded-3xl p-6 space-y-4">
+                  <div className="flex items-center justify-between border-b border-zinc-800/60 pb-2">
+                    <h4 className="text-base font-semibold text-white">Tax Deductions</h4>
+                    <span className="text-xs text-zinc-400">Monthly</span>
+                  </div>
+
+                  <div className="p-3.5 bg-zinc-950/60 rounded-2xl border border-zinc-800/80 flex items-center justify-between">
+                    <span className="text-zinc-300 font-semibold text-xs">Professional Tax</span>
+                    <span className="font-mono font-bold text-rose-400 text-xs">
+                      - {formatCurrency(salaryCalculations.professionalTax)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Net In-Hand Salary Card (Normal Obsidian Card Style matching other sections) */}
+                <div className="bg-zinc-900/60 border border-zinc-800/80 backdrop-blur-xl rounded-3xl p-6 space-y-4 text-left">
+                  <div className="flex items-center justify-between border-b border-zinc-800/60 pb-2">
+                    <h4 className="text-base font-semibold text-white">Net In-Hand Salary</h4>
+                    <span className="text-xs text-zinc-400">Monthly</span>
+                  </div>
+
+                  <div className="p-4 bg-zinc-950/60 rounded-2xl border border-zinc-800/80 space-y-3">
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-3xl sm:text-4xl font-bold font-mono text-white tracking-tight">
+                        {formatCurrency(salaryCalculations.netTakeHome)}
+                      </span>
+                      <span className="text-xs text-zinc-400 font-medium">/ month</span>
+                    </div>
+
+                    <div className="space-y-1.5 pt-2.5 border-t border-zinc-800/80 text-xs">
+                      <div className="flex justify-between text-zinc-400">
+                        <span>Gross Earnings:</span>
+                        <span className="text-white font-mono font-medium">{formatCurrency(salaryCalculations.wage)}</span>
+                      </div>
+                      <div className="flex justify-between text-zinc-400">
+                        <span>Total Deductions (PF + Tax):</span>
+                        <span className="text-rose-400 font-mono font-medium">- {formatCurrency(salaryCalculations.totalDeductions)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
               </div>
+
             </div>
+
           </div>
         )}
 
