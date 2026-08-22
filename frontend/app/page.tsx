@@ -23,7 +23,17 @@ import {
 import toast from "react-hot-toast";
 
 export default function Home() {
-  const { activeUser, directory, directoryLoading, fetchDirectory, departments: apiDepartments, fetchDepartments } = useApp();
+  const {
+    activeUser,
+    directory,
+    directoryLoading,
+    fetchDirectory,
+    departments: apiDepartments,
+    fetchDepartments,
+    isCheckedIn,
+    checkInTime,
+    toggleCheckIn,
+  } = useApp();
 
   // Fetch employee directory & departments from backend on mount
   useEffect(() => {
@@ -33,10 +43,6 @@ export default function Home() {
 
   // Navigation State
   const [activeTab, setActiveTab] = useState<"employees" | "attendance" | "time_off">("employees");
-
-  // Systray Check-In State
-  const [isCheckedIn, setIsCheckedIn] = useState(true);
-  const [checkInTime, setCheckInTime] = useState<string | null>("08:45 AM");
 
   // Data Collections State
   const [localEmployees, setLocalEmployees] = useState<MockEmployee[]>([]);
@@ -65,64 +71,6 @@ export default function Home() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCreateMode, setIsCreateMode] = useState(false);
   const [isCurrentUserProfile, setIsCurrentUserProfile] = useState(false);
-
-  // Toggle Check IN / OUT
-  const handleToggleCheckIn = () => {
-    if (isCheckedIn) {
-      // Check OUT
-      const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      setIsCheckedIn(false);
-      setCheckInTime(null);
-
-      // Add to attendance log
-      const newRecord: MockAttendance = {
-        id: `ATT-${Date.now()}`,
-        employeeId: activeUser?.id || "EMP-001",
-        employeeName: activeUser?.name || "Alex Morgan",
-        date: "Today",
-        checkIn: checkInTime || "08:45 AM",
-        checkOut: nowTime,
-        workHours: "8h 12m",
-        status: "on_time",
-      };
-      setAttendanceRecords((prev) => [newRecord, ...prev]);
-
-      // Update employee status
-      setLocalEmployees((prev) =>
-        prev.map((emp) =>
-          emp.id === "EMP-001" ? { ...emp, status: "absent" } : emp
-        )
-      );
-
-      toast("Checked OUT successfully.", { icon: "👋" });
-    } else {
-      // Check IN
-      const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      setIsCheckedIn(true);
-      setCheckInTime(nowTime);
-
-      // Add to attendance log
-      const newRecord: MockAttendance = {
-        id: `ATT-${Date.now()}`,
-        employeeId: activeUser?.id || "EMP-001",
-        employeeName: activeUser?.name || "Alex Morgan",
-        date: "Today",
-        checkIn: nowTime,
-        workHours: "Just Started",
-        status: "on_time",
-      };
-      setAttendanceRecords((prev) => [newRecord, ...prev]);
-
-      // Update employee status
-      setLocalEmployees((prev) =>
-        prev.map((emp) =>
-          emp.id === "EMP-001" ? { ...emp, status: "present", checkInTime: nowTime } : emp
-        )
-      );
-
-      toast.success(`Checked IN at ${nowTime}!`);
-    }
-  };
 
   // Open "NEW" Employee Modal
   const handleOpenNewEmployee = () => {
@@ -221,7 +169,7 @@ export default function Home() {
         setActiveTab={setActiveTab}
         isCheckedIn={isCheckedIn}
         checkInTime={checkInTime}
-        onToggleCheckIn={handleToggleCheckIn}
+        onToggleCheckIn={toggleCheckIn}
         onOpenMyProfile={handleOpenMyProfile}
       />
 
@@ -288,7 +236,7 @@ export default function Home() {
                 records={attendanceRecords}
                 isCheckedIn={isCheckedIn}
                 checkInTime={checkInTime}
-                onToggleCheckIn={handleToggleCheckIn}
+                onToggleCheckIn={toggleCheckIn}
                 employees={employees}
               />
             </div>

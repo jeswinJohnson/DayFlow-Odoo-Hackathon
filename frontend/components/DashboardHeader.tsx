@@ -8,21 +8,33 @@ import { useApp } from "@/context/AppContext";
 interface DashboardHeaderProps {
   activeTab: "employees" | "attendance" | "time_off";
   setActiveTab: (tab: "employees" | "attendance" | "time_off") => void;
-  isCheckedIn: boolean;
-  checkInTime: string | null;
-  onToggleCheckIn: () => void;
-  onOpenMyProfile: () => void;
+  isCheckedIn?: boolean;
+  checkInTime?: string | null;
+  onToggleCheckIn?: () => void;
+  onOpenMyProfile?: () => void;
 }
 
 export function DashboardHeader({
   activeTab,
   setActiveTab,
-  isCheckedIn,
-  checkInTime,
-  onToggleCheckIn,
+  isCheckedIn: propIsCheckedIn,
+  checkInTime: propCheckInTime,
+  onToggleCheckIn: propOnToggleCheckIn,
   onOpenMyProfile,
 }: DashboardHeaderProps) {
-  const { activeUser, logout } = useApp();
+  const {
+    activeUser,
+    logout,
+    isCheckedIn: contextIsCheckedIn,
+    checkInTime: contextCheckInTime,
+    toggleCheckIn,
+    attendanceLoading,
+  } = useApp();
+
+  const isCheckedIn = propIsCheckedIn !== undefined ? propIsCheckedIn : contextIsCheckedIn;
+  const checkInTime = propCheckInTime !== undefined ? propCheckInTime : contextCheckInTime;
+  const handleToggle = propOnToggleCheckIn || toggleCheckIn;
+
   const [showAvatarMenu, setShowAvatarMenu] = useState(false);
   const [showSystrayMenu, setShowSystrayMenu] = useState(false);
 
@@ -195,17 +207,26 @@ export function DashboardHeader({
                 </div>
 
                 <button
-                  onClick={() => {
-                    onToggleCheckIn();
+                  disabled={attendanceLoading}
+                  onClick={async () => {
+                    await handleToggle();
                     setShowSystrayMenu(false);
                   }}
-                  className={`w-full py-2.5 px-3 rounded-xl text-xs font-bold transition-all duration-200 active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer ${
+                  className={`w-full py-2.5 px-3 rounded-xl text-xs font-bold transition-all duration-200 active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
                     isCheckedIn
                       ? "bg-rose-600 hover:bg-rose-500 text-white"
                       : "bg-emerald-600 hover:bg-emerald-500 text-white"
                   }`}
                 >
-                  {isCheckedIn ? (
+                  {attendanceLoading ? (
+                    <span className="flex items-center gap-2">
+                      <svg className="animate-spin h-3.5 w-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>Processing...</span>
+                    </span>
+                  ) : isCheckedIn ? (
                     <>
                       <span>Check Out</span>
                       <span>→</span>
