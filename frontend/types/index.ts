@@ -2,9 +2,14 @@
 
 export interface User {
   id: string;
-  name: string;
   email: string;
+  name?: string;
+  uid?: string;
+  employee_id?: string;
   role?: string;
+  department_name?: string;
+  departments?: { name: string } | null;
+  [key: string]: any;
 }
 
 export interface ApiResponse<T = unknown> {
@@ -13,14 +18,16 @@ export interface ApiResponse<T = unknown> {
   data?: T;
 }
 
-export interface TestResult {
-  status: string;
-  timestamp: string;
+export interface AppContextType {
+  activeUser: User | null;
+  authLoading: boolean;
+  setActiveUser: (user: User | null) => void;
+  login: (identifier: string, password: string) => Promise<any>;
+  logout: () => Promise<void>;
+  isRecoveryMode: boolean;
+  setIsRecoveryMode: (value: boolean) => void;
+  resetPassword: (identifier: string) => Promise<void>;
+  updatePassword: (password: string) => Promise<void>;
 }
 
-export interface AppContextType {
-  isLoading: boolean;
-  error: string | null;
-  test: () => Promise<ApiResponse<TestResult>>;
-  clearError: () => void;
-}
+
