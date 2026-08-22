@@ -175,6 +175,8 @@ export default function Home() {
     };
   }, [employees]);
 
+  console.log(activeUser)
+
   return (
     <div className="min-h-screen flex flex-col bg-zinc-950 text-zinc-100 font-sans selection:bg-indigo-500/30 selection:text-white">
       

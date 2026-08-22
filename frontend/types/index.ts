@@ -1,21 +1,17 @@
 // Custom TypeScript interfaces and types for the application
 
+enum role {
+  admin = "admin",
+  emp = "emp"
+}
+
 export interface User {
   id: string;
   email: string;
-  name?: string;
-  uid?: string;
-  employee_id?: string;
-  role?: string;
-  department_name?: string;
-  departments?: { name: string } | null;
+  first_name: string;
+  last_name: string;
+  role: role;
   [key: string]: any;
-}
-
-export interface ApiResponse<T = unknown> {
-  success: boolean;
-  message: string;
-  data?: T;
 }
 
 export interface AppContextType {
