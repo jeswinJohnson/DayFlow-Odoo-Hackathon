@@ -296,6 +296,7 @@ export default function Home() {
               <TimeOffView
                 requests={timeOffRequests}
                 onRequestTimeOff={(newReq) => setTimeOffRequests((prev) => [newReq, ...prev])}
+                employees={employees}
               />
             </div>
           )}
