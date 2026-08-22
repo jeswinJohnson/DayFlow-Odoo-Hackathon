@@ -6,19 +6,29 @@ import { useApp } from "@/context/AppContext";
 import toast from "react-hot-toast";
 
 interface AttendanceViewProps {
-  records: MockAttendance[];
-  isCheckedIn: boolean;
-  checkInTime: string | null;
-  onToggleCheckIn: () => void;
+  records?: MockAttendance[];
+  isCheckedIn?: boolean;
+  checkInTime?: string | null;
+  onToggleCheckIn?: () => void;
   employees?: MockEmployee[];
 }
 
 export function AttendanceView({
-  records,
-  isCheckedIn,
+  records = [],
+  isCheckedIn: propIsCheckedIn,
+  checkInTime: propCheckInTime,
   employees = INITIAL_EMPLOYEES,
 }: AttendanceViewProps) {
-  const { activeUser } = useApp();
+  const {
+    activeUser,
+    isCheckedIn: contextIsCheckedIn,
+    checkInTime: contextCheckInTime,
+    fetchAllAttendance,
+    fetchUserDailyAttendance,
+  } = useApp();
+
+  const isCheckedIn = propIsCheckedIn !== undefined ? propIsCheckedIn : contextIsCheckedIn;
+  const checkInTime = propCheckInTime !== undefined ? propCheckInTime : contextCheckInTime;
 
   // Role detection
   const isActualAdmin = activeUser?.role === "admin";

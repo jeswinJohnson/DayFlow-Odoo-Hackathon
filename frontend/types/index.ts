@@ -1,16 +1,20 @@
 // Custom TypeScript interfaces and types for the application
 
-enum role {
-  admin = "admin",
-  emp = "emp"
-}
+export type Role = 'admin' | 'employee' | 'emp';
 
 export interface User {
   id: string;
   email: string;
   first_name: string;
   last_name: string;
-  role: role;
+  name?: string;
+  role: Role;
+  company_id?: number | string | null;
+  company_name?: string | null;
+  dept_id?: number | string | null;
+  department_name?: string | null;
+  designation?: string | null;
+  must_change_password?: boolean;
   [key: string]: any;
 }
 
@@ -80,6 +84,8 @@ export interface CreateUserRequest {
   email: string;
   phone?: string | null;
   department_id: number | string;
+  designation?: string | null;
+  doj?: string | null;
 }
 
 export interface CreateUserResponse {
@@ -90,11 +96,59 @@ export interface CreateUserResponse {
   last_name: string;
   email: string;
   password?: string | null;
+  temporary_password?: string | null;
   phone?: string | null;
   department_id: number | string;
+  designation?: string | null;
+  doj?: string | null;
   company_id?: number | string | null;
   role?: string;
+  must_change_password?: boolean;
   message?: string;
+}
+
+export interface CompanySignupData {
+  companyName: string;
+  adminName: string;
+  email: string;
+  phone: string;
+  password: string;
+  logoDataUrl?: string | null;
+}
+
+export interface AttendanceActionResponse {
+  message: string;
+  data?: any;
+}
+
+export interface AttendanceStatusResponse {
+  employee_id: string;
+  status?: string | null;
+}
+
+export interface AttendanceRecord {
+  id?: string | number | null;
+  user_id?: string | null;
+  employee_name?: string | null;
+  date?: string | null;
+  check_in?: string | null;
+  check_out?: string | null;
+  work_hours?: string | null;
+  extra_hours?: string | null;
+  status?: string | null;
+  department?: string | null;
+  [key: string]: any;
+}
+
+export interface GetAllAttendanceResponse {
+  date: string;
+  records: any[];
+}
+
+export interface UserDailyAttendanceResponse {
+  employee_id: string;
+  date: string;
+  attendance?: any;
 }
 
 export interface AppContextType {
@@ -118,10 +172,17 @@ export interface AppContextType {
   departmentsLoading: boolean;
   fetchDepartments: () => Promise<DepartmentOut[] | null>;
   createUser: (data: CreateUserRequest) => Promise<CreateUserResponse | null>;
+  isCheckedIn: boolean;
+  checkInTime: string | null;
+  attendanceStatus: string | null;
+  attendanceLoading: boolean;
+  checkIn: () => Promise<AttendanceActionResponse | null>;
+  checkOut: () => Promise<AttendanceActionResponse | null>;
+  toggleCheckIn: () => Promise<void>;
+  fetchAttendanceStatus: () => Promise<AttendanceStatusResponse | null>;
+  fetchUserDailyAttendance: (date?: string, employeeId?: string) => Promise<UserDailyAttendanceResponse | null>;
+  fetchAllAttendance: (date?: string) => Promise<GetAllAttendanceResponse | null>;
   getDataFromServer: (endpoints: string) => Promise<any>;
   postDataToServer: (endpoints: string, body: any) => Promise<any>;
   patchDataToServer: (endpoints: string, body: any) => Promise<any>;
 }
-
-
-

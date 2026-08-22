@@ -74,7 +74,7 @@ When adding a new feature or API endpoint (e.g. `getDashboardData`):
 ## 3. Design & Styling System
 
 The application uses **Tailwind CSS** with a modern, high-contrast **Dark Mode** aesthetic.
-
+![alt text](image.png)
 ### Palette & Color Tokens
 - **Background Base**: `bg-zinc-950` (Deep obsidian dark background)
 - **Container Surfaces**: `bg-zinc-900/60` with `border border-zinc-800`

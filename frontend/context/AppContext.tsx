@@ -1,7 +1,20 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { User, AppContextType, MyProfile, EditProfile, EmployeeDirectory, DepartmentOut, CreateUserRequest, CreateUserResponse } from "@/types";
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
+import {
+  User,
+  AppContextType,
+  MyProfile,
+  EditProfile,
+  EmployeeDirectory,
+  DepartmentOut,
+  CreateUserRequest,
+  CreateUserResponse,
+  AttendanceActionResponse,
+  AttendanceStatusResponse,
+  GetAllAttendanceResponse,
+  UserDailyAttendanceResponse,
+} from "@/types";
 import { createClient } from "@/supabase/client";
 import toast from "react-hot-toast";
 
@@ -18,12 +31,21 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [departments, setDepartments] = useState<DepartmentOut[] | null>(null);
   const [departmentsLoading, setDepartmentsLoading] = useState<boolean>(false);
 
+  // Attendance State
+  const [isCheckedIn, setIsCheckedIn] = useState<boolean>(false);
+  const [checkInTime, setCheckInTime] = useState<string | null>(null);
+  const [attendanceStatus, setAttendanceStatus] = useState<string | null>(null);
+  const [attendanceLoading, setAttendanceLoading] = useState<boolean>(false);
+
   const [supabase] = useState(() => createClient());
 
   const logout = async () => {
     await supabase.auth.signOut();
     setActiveUser(null);
     setIsRecoveryMode(false);
+    setIsCheckedIn(false);
+    setCheckInTime(null);
+    setAttendanceStatus(null);
   };
 
   const fetchUserProfile = async (userId: string, emailFallback?: string): Promise<User | null> => {
@@ -384,6 +406,117 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const fetchAttendanceStatus = async (): Promise<AttendanceStatusResponse | null> => {
+    try {
+      const data: AttendanceStatusResponse = await getDataFromServer("attendance/status");
+      if (data) {
+        setAttendanceStatus(data.status || null);
+        const statusLower = (data.status || "").toLowerCase();
+        const isPresent =
+          statusLower === "present" ||
+          statusLower === "checked_in" ||
+          statusLower === "in_progress" ||
+          statusLower === "true";
+        setIsCheckedIn(isPresent);
+        return data;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error fetching attendance status:", error);
+      return null;
+    }
+  };
+
+  const fetchUserDailyAttendance = async (
+    date?: string,
+    employeeId?: string
+  ): Promise<UserDailyAttendanceResponse | null> => {
+    try {
+      const params = new URLSearchParams();
+      if (date) params.append("date", date);
+      if (employeeId) params.append("employee_id", employeeId);
+      const query = params.toString() ? `?${params.toString()}` : "";
+
+      const data: UserDailyAttendanceResponse = await getDataFromServer(`attendance/daily${query}`);
+      if (data && data.attendance) {
+        const att = data.attendance;
+        if (att.check_in && (!att.check_out || att.check_out === "Active" || att.check_out === "—")) {
+          setIsCheckedIn(true);
+          setCheckInTime(att.check_in);
+        } else if (att.check_in && att.check_out) {
+          setIsCheckedIn(false);
+          setCheckInTime(null);
+        }
+      }
+      return data || null;
+    } catch (error) {
+      console.error("Error fetching daily attendance:", error);
+      return null;
+    }
+  };
+
+  const checkIn = async (): Promise<AttendanceActionResponse | null> => {
+    setAttendanceLoading(true);
+    try {
+      const data = await postDataToServer("attendance/check-in", {});
+      if (data) {
+        const nowTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        setIsCheckedIn(true);
+        setCheckInTime(nowTime);
+        setAttendanceStatus("present");
+        toast.success(data.message || `Checked IN at ${nowTime}!`);
+        await fetchAttendanceStatus();
+        return data;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error checking in:", error);
+      return null;
+    } finally {
+      setAttendanceLoading(false);
+    }
+  };
+
+  const checkOut = async (): Promise<AttendanceActionResponse | null> => {
+    setAttendanceLoading(true);
+    try {
+      const data = await postDataToServer("attendance/check-out", {});
+      if (data) {
+        setIsCheckedIn(false);
+        setCheckInTime(null);
+        setAttendanceStatus("absent");
+        toast.success(data.message || "Checked OUT successfully.");
+        await fetchAttendanceStatus();
+        return data;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error checking out:", error);
+      return null;
+    } finally {
+      setAttendanceLoading(false);
+    }
+  };
+
+  const toggleCheckIn = async (): Promise<void> => {
+    if (isCheckedIn) {
+      await checkOut();
+    } else {
+      await checkIn();
+    }
+  };
+
+  const fetchAllAttendance = async (date?: string): Promise<GetAllAttendanceResponse | null> => {
+    try {
+      const query = date ? `?date=${encodeURIComponent(date)}` : "";
+      const data: GetAllAttendanceResponse = await getDataFromServer(`attendance/all${query}`);
+      return data || null;
+    } catch (error) {
+      console.error("Error fetching all attendance:", error);
+      return null;
+    }
+  };
+
   const createUser = async (userData: CreateUserRequest): Promise<CreateUserResponse | null> => {
     try {
       const data = await postDataToServer("create-user", userData);
@@ -398,6 +531,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       return null;
     }
   };
+
+  // Sync attendance on user login
+  useEffect(() => {
+    if (activeUser?.id) {
+      fetchAttendanceStatus();
+      fetchUserDailyAttendance();
+    }
+  }, [activeUser?.id]);
 
   return (
     <AppContext.Provider
@@ -422,6 +563,16 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         departmentsLoading,
         fetchDepartments,
         createUser,
+        isCheckedIn,
+        checkInTime,
+        attendanceStatus,
+        attendanceLoading,
+        checkIn,
+        checkOut,
+        toggleCheckIn,
+        fetchAttendanceStatus,
+        fetchUserDailyAttendance,
+        fetchAllAttendance,
         getDataFromServer,
         postDataToServer,
         patchDataToServer,

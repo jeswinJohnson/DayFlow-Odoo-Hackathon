@@ -7,7 +7,16 @@ import { DashboardHeader } from "@/components";
 import toast from "react-hot-toast";
 
 export default function EmployeeProfilePage() {
-  const { activeUser, myProfile, profileLoading, fetchMyProfile, updateMyProfile } = useApp();
+  const {
+    activeUser,
+    myProfile,
+    profileLoading,
+    fetchMyProfile,
+    updateMyProfile,
+    isCheckedIn,
+    checkInTime,
+    toggleCheckIn,
+  } = useApp();
 
   // Fetch Profile on Mount
   useEffect(() => {
@@ -17,10 +26,6 @@ export default function EmployeeProfilePage() {
   // Navigation State
   const [activeNavTab, setActiveNavTab] = useState<"employees" | "attendance" | "time_off">("employees");
   const [profileTab, setProfileTab] = useState<"resume" | "private_info" | "salary_info">("resume");
-
-  // Systray State
-  const [isCheckedIn, setIsCheckedIn] = useState(true);
-  const [checkInTime, setCheckInTime] = useState<string | null>("08:45 AM");
 
   // Resume Form State
   const [bioText, setBioText] = useState("");
@@ -153,19 +158,6 @@ export default function EmployeeProfilePage() {
     }
   };
 
-  const handleToggleCheckIn = () => {
-    if (isCheckedIn) {
-      setIsCheckedIn(false);
-      setCheckInTime(null);
-      toast("Checked OUT successfully.", { icon: "👋" });
-    } else {
-      const nowTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-      setIsCheckedIn(true);
-      setCheckInTime(nowTime);
-      toast.success(`Checked IN at ${nowTime}!`);
-    }
-  };
-
   // Skeleton Loading Screen
   if (profileLoading && !myProfile) {
     return (
@@ -175,7 +167,7 @@ export default function EmployeeProfilePage() {
           setActiveTab={setActiveNavTab}
           isCheckedIn={isCheckedIn}
           checkInTime={checkInTime}
-          onToggleCheckIn={handleToggleCheckIn}
+          onToggleCheckIn={toggleCheckIn}
           onOpenMyProfile={() => {}}
         />
         <main className="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6 animate-pulse">
@@ -215,7 +207,7 @@ export default function EmployeeProfilePage() {
         setActiveTab={setActiveNavTab}
         isCheckedIn={isCheckedIn}
         checkInTime={checkInTime}
-        onToggleCheckIn={handleToggleCheckIn}
+        onToggleCheckIn={toggleCheckIn}
         onOpenMyProfile={() => {}}
       />
 
