@@ -1,16 +1,21 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useApp } from "@/context/AppContext";
 import { DashboardHeader } from "@/components";
 import toast from "react-hot-toast";
 
 export default function ProfilePage() {
-  const { activeUser } = useApp();
+  const { activeUser, myProfile, profileLoading, fetchMyProfile, updateMyProfile } = useApp();
 
   // Role Access (Admin View)
   const isAdmin = true;
+
+  // Fetch Profile on Mount
+  useEffect(() => {
+    fetchMyProfile();
+  }, []);
 
   // Navigation State
   const [activeNavTab, setActiveNavTab] = useState<"employees" | "attendance" | "time_off">("employees");
@@ -20,65 +25,178 @@ export default function ProfilePage() {
   const [isCheckedIn, setIsCheckedIn] = useState(true);
   const [checkInTime, setCheckInTime] = useState<string | null>("08:45 AM");
 
-  // Profile Header State
-  const [name] = useState(activeUser?.name || "Alex Morgan");
-  const [loginId] = useState(activeUser?.uid || activeUser?.id || "EMP-001");
-  const [email] = useState(activeUser?.email || "alex.morgan@dayflow.internal");
-  const [mobile] = useState("+1 (555) 234-5678");
-  const [company] = useState("DayFlow Technologies Inc.");
-  const [department] = useState(activeUser?.department_name || "Engineering");
-  const [manager] = useState("Elena Rostova (VP of People)");
-  const [location] = useState("Floor 4 - Tech Bay A, San Francisco HQ");
-  const [avatar] = useState(
-    "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80"
-  );
+  // Private Info Form State
+  const [isEditingPrivate, setIsEditingPrivate] = useState(false);
+  const [privateFormData, setPrivateFormData] = useState({
+    p_email: "",
+    dob: "",
+    nationality: "",
+    gender: "",
+    marital_status: "",
+    doj: "",
+    uan_no: "",
+    pan_no: "",
+    ifsc_code: "",
+    bank_name: "",
+    acc_number: "",
+    location: "",
+  });
 
-  // Resume Tab Content State
-  const [aboutText, setAboutText] = useState(
-    "Lead software architect specializing in distributed cloud infrastructure, real-time sync engines, and resilient enterprise web architecture. Passionate about craftsmanship, high-velocity developer experience, and product excellence."
-  );
-  const [editingAbout, setEditingAbout] = useState(false);
-
-  const [jobLoveText, setJobLoveText] = useState(
-    "Collaborating with an exceptional team to solve complex engineering challenges, architecting high-impact features, and mentoring engineers to achieve their fullest technical potential."
-  );
-  const [editingJobLove, setEditingJobLove] = useState(false);
-
-  const [hobbiesText, setHobbiesText] = useState(
-    "Mechanical keyboards, trail running, open-source tooling, landscape photography, and experimenting with procedural graphics."
-  );
-  const [editingHobbies, setEditingHobbies] = useState(false);
+  // Single Bio Text Block State
+  const [bioText, setBioText] = useState("");
+  const [editingBio, setEditingBio] = useState(false);
 
   // Skills State
-  const [skills, setSkills] = useState<string[]>([
-    "TypeScript",
-    "React / Next.js",
-    "Distributed Systems",
-    "TailwindCSS",
-    "Supabase / PostgreSQL",
-    "GraphQL",
-    "Docker & Kubernetes",
-    "CI/CD Pipelines",
-  ]);
+  const [skills, setSkills] = useState<string[]>([]);
   const [newSkillInput, setNewSkillInput] = useState("");
   const [showAddSkill, setShowAddSkill] = useState(false);
 
   // Certifications State
   const [certifications, setCertifications] = useState<
     { name: string; issuer: string; year: string }[]
-  >([
-    { name: "AWS Certified Solutions Architect - Professional", issuer: "Amazon Web Services", year: "2024" },
-    { name: "Certified Kubernetes Administrator (CKA)", issuer: "Linux Foundation", year: "2023" },
-    { name: "Google Cloud Professional Cloud Architect", issuer: "Google Cloud", year: "2022" },
-  ]);
+  >([]);
   const [newCertName, setNewCertName] = useState("");
   const [newCertIssuer, setNewCertIssuer] = useState("");
   const [newCertYear, setNewCertYear] = useState("");
   const [showAddCert, setShowAddCert] = useState(false);
 
+  // Sync myProfile from context when fetched or updated
+  useEffect(() => {
+    if (myProfile) {
+      setBioText(myProfile.bio || "");
+      if (myProfile.skills && Array.isArray(myProfile.skills)) {
+        setSkills(myProfile.skills);
+      } else {
+        setSkills([]);
+      }
+      if (myProfile.certification && Array.isArray(myProfile.certification)) {
+        setCertifications(
+          myProfile.certification.map((c) => {
+            if (c.includes(" | ")) {
+              const [cName, cIssuer, cYear] = c.split(" | ");
+              return { name: cName || c, issuer: cIssuer || "", year: cYear || "" };
+            }
+            return { name: c, issuer: "", year: "" };
+          })
+        );
+      } else {
+        setCertifications([]);
+      }
+      setPrivateFormData({
+        p_email: myProfile.p_email || "",
+        dob: myProfile.dob ? myProfile.dob.split("T")[0] : "",
+        nationality: myProfile.nationality || "",
+        gender: myProfile.gender || "",
+        marital_status: myProfile.marital_status || "",
+        doj: myProfile.doj ? myProfile.doj.split("T")[0] : "",
+        uan_no: myProfile.uan_no || "",
+        pan_no: myProfile.pan_no || "",
+        ifsc_code: myProfile.ifsc_code || "",
+        bank_name: myProfile.bank_name || "",
+        acc_number: myProfile.acc_number || "",
+        location: myProfile.location || "",
+      });
+    }
+  }, [myProfile]);
+
+  // Derived Header Profile Fields (No boilerplate/mock fallbacks, strictly null if null)
+  const firstName = myProfile?.f_name ?? activeUser?.first_name ?? null;
+  const lastName = myProfile?.l_name ?? activeUser?.last_name ?? null;
+  const name = (firstName || lastName) ? `${firstName || ""} ${lastName || ""}`.trim() : "null";
+
+  const email = myProfile?.email ?? activeUser?.email ?? "null";
+  const loginId = email;
+  const company = myProfile?.comp_name ?? "null";
+  const department = myProfile?.dept_name ?? activeUser?.department_name ?? "null";
+  const manager = myProfile?.manager_name ?? "null";
+  const location = myProfile?.location ?? (privateFormData.location || "null");
+  const avatar =
+    "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80";
+
+  // API Integration Handlers
+  const handleSaveBio = async () => {
+    const res = await updateMyProfile({ bio: bioText });
+    if (res) setEditingBio(false);
+  };
+
+  const handleAddSkill = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSkillInput.trim()) return;
+    const newSkill = newSkillInput.trim();
+    if (skills.includes(newSkill)) {
+      toast.error("Skill already added.");
+      return;
+    }
+    const updatedSkills = [...skills, newSkill];
+    const res = await updateMyProfile({ skills: updatedSkills });
+    if (res) {
+      setSkills(updatedSkills);
+      setNewSkillInput("");
+      setShowAddSkill(false);
+    }
+  };
+
+  const handleRemoveSkill = async (skillToRemove: string) => {
+    const updatedSkills = skills.filter((s) => s !== skillToRemove);
+    const res = await updateMyProfile({ skills: updatedSkills });
+    if (res) {
+      setSkills(updatedSkills);
+    }
+  };
+
+  const handleAddCert = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCertName.trim()) {
+      toast.error("Please fill in certification name.");
+      return;
+    }
+    const certString = newCertIssuer.trim()
+      ? `${newCertName.trim()} | ${newCertIssuer.trim()} | ${newCertYear.trim()}`
+      : newCertName.trim();
+    const currentCertStrings = certifications.map((c) =>
+      c.issuer ? `${c.name} | ${c.issuer} | ${c.year}` : c.name
+    );
+    const updatedCerts = [...currentCertStrings, certString];
+    const res = await updateMyProfile({ certification: updatedCerts });
+    if (res) {
+      setCertifications((prev) => [
+        ...prev,
+        {
+          name: newCertName.trim(),
+          issuer: newCertIssuer.trim(),
+          year: newCertYear.trim(),
+        },
+      ]);
+      setNewCertName("");
+      setNewCertIssuer("");
+      setNewCertYear("");
+      setShowAddCert(false);
+    }
+  };
+
+  const handleSavePrivateInfo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const res = await updateMyProfile({
+      p_email: privateFormData.p_email || null,
+      dob: privateFormData.dob ? new Date(privateFormData.dob).toISOString() : null,
+      nationality: privateFormData.nationality || null,
+      gender: privateFormData.gender || null,
+      marital_status: privateFormData.marital_status || null,
+      doj: privateFormData.doj ? new Date(privateFormData.doj).toISOString() : null,
+      uan_no: privateFormData.uan_no || null,
+      pan_no: privateFormData.pan_no || null,
+      ifsc_code: privateFormData.ifsc_code || null,
+      bank_name: privateFormData.bank_name || null,
+      acc_number: privateFormData.acc_number || null,
+      location: privateFormData.location || null,
+    });
+    if (res) {
+      setIsEditingPrivate(false);
+    }
+  };
+
   // =========================================================================
   // SALARY INFORMATION STATE & AUTOMATIC ACCURATE CALCULATION ENGINE
-  // Using string state for smooth backspace/editing without stuck zeros
   // =========================================================================
   const [monthlyWageStr, setMonthlyWageStr] = useState<string>("50000");
   const [workingDaysStr, setWorkingDaysStr] = useState<string>("5");
@@ -91,34 +209,18 @@ export default function ProfilePage() {
     const wage = Math.max(0, parsedWage);
     const yearly = wage * 12;
 
-    // 1. Basic Salary = 50.00% of Monthly Wage
     const basic = wage * 0.50;
-
-    // 2. House Rent Allowance (HRA) = 50.00% of Basic Salary
     const hra = basic * 0.50;
-
-    // 3. Standard Allowance = 16.67% of Basic Salary (exact 4,167 for 25k basic)
     const standardAllowance = Math.round(basic * (16.668 / 100) * 100) / 100;
-
-    // 4. Performance Bonus = 8.33% of Basic Salary (exact 2,082.50 for 25k basic)
     const performanceBonus = Math.round(basic * (8.33 / 100) * 100) / 100;
-
-    // 5. Leave Travel Allowance (LTA) = 8.33% of Basic Salary (exact 2,082.50 for 25k basic)
     const lta = Math.round(basic * (8.33 / 100) * 100) / 100;
-
-    // 6. Fixed Allowance = Balance to equal Monthly Wage
     const sumOther = basic + hra + standardAllowance + performanceBonus + lta;
     const fixedAllowance = Math.max(0, Math.round((wage - sumOther) * 100) / 100);
     const fixedAllowancePct = basic > 0 ? (fixedAllowance / basic) * 100 : 0;
 
-    // 7. Provident Fund (PF) Contribution = 12.00% of Basic Salary
     const employeePF = Math.round(basic * 0.12 * 100) / 100;
     const employerPF = Math.round(basic * 0.12 * 100) / 100;
-
-    // 8. Tax Deductions = Fixed ₹200 Professional Tax
     const professionalTax = wage > 0 ? 200 : 0;
-
-    // 9. Total Deductions & Net Take-Home Pay
     const totalDeductions = employeePF + professionalTax;
     const netTakeHome = Math.max(0, Math.round((wage - totalDeductions) * 100) / 100);
 
@@ -140,7 +242,6 @@ export default function ProfilePage() {
     };
   }, [monthlyWageStr]);
 
-  // Currency Formatter
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
@@ -150,7 +251,6 @@ export default function ProfilePage() {
     }).format(val);
   };
 
-  // Toggle Check In / Out
   const handleToggleCheckIn = () => {
     if (isCheckedIn) {
       setIsCheckedIn(false);
@@ -164,47 +264,76 @@ export default function ProfilePage() {
     }
   };
 
-  // Add Skill
-  const handleAddSkill = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newSkillInput.trim()) return;
-    if (skills.includes(newSkillInput.trim())) {
-      toast.error("Skill already added.");
-      return;
-    }
-    setSkills((prev) => [...prev, newSkillInput.trim()]);
-    setNewSkillInput("");
-    setShowAddSkill(false);
-    toast.success("Skill added!");
-  };
+  // Skeleton Loading Screen
+  if (profileLoading && !myProfile) {
+    return (
+      <div className="min-h-screen flex flex-col bg-zinc-950 text-zinc-100 font-sans selection:bg-indigo-500/30 selection:text-white">
+        <DashboardHeader
+          activeTab={activeNavTab}
+          setActiveTab={setActiveNavTab}
+          isCheckedIn={isCheckedIn}
+          checkInTime={checkInTime}
+          onToggleCheckIn={handleToggleCheckIn}
+          onOpenMyProfile={() => {}}
+        />
+        <main className="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6 animate-pulse">
+          {/* Header Skeleton */}
+          <div className="flex items-center justify-between border-b border-zinc-800/80 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-zinc-800/80"></div>
+              <div className="w-36 h-7 rounded-lg bg-zinc-800/80"></div>
+            </div>
+            <div className="w-24 h-6 rounded-full bg-zinc-800/80"></div>
+          </div>
 
-  // Remove Skill
-  const handleRemoveSkill = (skillToRemove: string) => {
-    setSkills((prev) => prev.filter((s) => s !== skillToRemove));
-    toast("Skill removed.");
-  };
+          {/* Hero Profile Card Skeleton */}
+          <div className="w-full bg-zinc-900/70 border border-zinc-800 rounded-3xl p-6 sm:p-8 space-y-6">
+            <div className="flex flex-col lg:flex-row items-start lg:items-center gap-6 lg:gap-10">
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-zinc-800/80 flex-shrink-0"></div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1 w-full">
+                <div className="space-y-3">
+                  <div className="w-48 h-8 bg-zinc-800/80 rounded-lg"></div>
+                  <div className="w-36 h-4 bg-zinc-800/80 rounded-md"></div>
+                  <div className="w-44 h-4 bg-zinc-800/80 rounded-md"></div>
+                </div>
+                <div className="space-y-3 bg-zinc-950/50 p-4 rounded-2xl border border-zinc-800/60">
+                  <div className="w-full h-4 bg-zinc-800/80 rounded-md"></div>
+                  <div className="w-full h-4 bg-zinc-800/80 rounded-md"></div>
+                  <div className="w-full h-4 bg-zinc-800/80 rounded-md"></div>
+                  <div className="w-full h-4 bg-zinc-800/80 rounded-md"></div>
+                </div>
+              </div>
+            </div>
+          </div>
 
-  // Add Certification
-  const handleAddCert = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newCertName.trim() || !newCertIssuer.trim()) {
-      toast.error("Please fill in certification name and issuer.");
-      return;
-    }
-    setCertifications((prev) => [
-      ...prev,
-      {
-        name: newCertName.trim(),
-        issuer: newCertIssuer.trim(),
-        year: newCertYear.trim() || "2026",
-      },
-    ]);
-    setNewCertName("");
-    setNewCertIssuer("");
-    setNewCertYear("");
-    setShowAddCert(false);
-    toast.success("Certification added!");
-  };
+          {/* Tabs Skeleton */}
+          <div className="flex gap-4 border-b border-zinc-800 pb-3">
+            <div className="w-24 h-8 bg-zinc-800/80 rounded-lg"></div>
+            <div className="w-28 h-8 bg-zinc-800/80 rounded-lg"></div>
+            <div className="w-24 h-8 bg-zinc-800/80 rounded-lg"></div>
+          </div>
+
+          {/* Body Skeleton */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="lg:col-span-7 bg-zinc-900/60 border border-zinc-800 rounded-3xl p-6 h-72 space-y-4">
+              <div className="w-24 h-5 bg-zinc-800/80 rounded-md"></div>
+              <div className="w-full h-4 bg-zinc-800/80 rounded-md"></div>
+              <div className="w-5/6 h-4 bg-zinc-800/80 rounded-md"></div>
+              <div className="w-4/6 h-4 bg-zinc-800/80 rounded-md"></div>
+            </div>
+            <div className="lg:col-span-5 bg-zinc-900/60 border border-zinc-800 rounded-3xl p-6 h-72 space-y-4">
+              <div className="w-24 h-5 bg-zinc-800/80 rounded-md"></div>
+              <div className="flex flex-wrap gap-2">
+                <div className="w-20 h-7 bg-zinc-800/80 rounded-xl"></div>
+                <div className="w-24 h-7 bg-zinc-800/80 rounded-xl"></div>
+                <div className="w-16 h-7 bg-zinc-800/80 rounded-xl"></div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-zinc-950 text-zinc-100 font-sans selection:bg-indigo-500/30 selection:text-white">
@@ -228,7 +357,7 @@ export default function ProfilePage() {
             <Link
               href="/"
               className="p-2 text-zinc-400 hover:text-white rounded-xl bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 transition-colors cursor-pointer"
-              title="Back to Employees"
+              title="Back to Dashboard"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -250,7 +379,7 @@ export default function ProfilePage() {
         <div className="w-full bg-zinc-900/70 border border-zinc-800 backdrop-blur-xl rounded-3xl p-6 sm:p-8 shadow-xl">
           <div className="flex flex-col lg:flex-row items-start lg:items-center gap-6 lg:gap-10">
             
-            {/* Profile Avatar (Read-Only) */}
+            {/* Profile Avatar */}
             <div className="relative flex-shrink-0">
               <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden bg-zinc-800 border-2 border-zinc-700 shadow-xl">
                 <img
@@ -264,7 +393,7 @@ export default function ProfilePage() {
             {/* Profile Metadata */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1 w-full text-left">
               
-              {/* Left Column: Name, Login ID, Email, Mobile */}
+              {/* Left Column: Name, Email */}
               <div className="space-y-3">
                 <div>
                   <h2 className="text-2xl sm:text-3xl font-serif text-white tracking-tight">
@@ -281,11 +410,6 @@ export default function ProfilePage() {
                     <a href={`mailto:${email}`} className="text-white hover:text-indigo-400 transition-colors font-medium">
                       {email}
                     </a>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <span className="text-zinc-400 font-medium w-16">Mobile:</span>
-                    <span className="text-zinc-200 font-mono">{mobile}</span>
                   </div>
                 </div>
               </div>
@@ -343,7 +467,6 @@ export default function ProfilePage() {
               Private Info
             </button>
 
-            {/* Salary Info Tab (No admin badge beside title) */}
             {isAdmin && (
               <button
                 onClick={() => setProfileTab("salary_info")}
@@ -360,128 +483,54 @@ export default function ProfilePage() {
         </div>
 
         {/* =================================================================== */}
-        {/* TAB 1: RESUME (About, What I love, Hobbies, Skills, Certifications) */}
+        {/* TAB 1: RESUME (Single Bio Block, Skills, Certifications)           */}
         {/* =================================================================== */}
         {profileTab === "resume" && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-150">
             
-            {/* Left Column: About & Stories (7 cols) */}
+            {/* Left Column: Huge Bio Block Text Section (7 cols) */}
             <div className="lg:col-span-7 space-y-6">
               
-              {/* About Section */}
-              <div className="bg-zinc-900/60 border border-zinc-800/80 backdrop-blur-xl rounded-3xl p-6 space-y-3 text-left">
-                <div className="flex items-center justify-between border-b border-zinc-800/60 pb-2">
-                  <h3 className="text-base font-semibold text-white">About</h3>
+              <div className="bg-zinc-900/60 border border-zinc-800/80 backdrop-blur-xl rounded-3xl p-6 sm:p-8 space-y-4 text-left">
+                <div className="flex items-center justify-between border-b border-zinc-800/60 pb-3">
+                  <h3 className="text-lg font-serif text-white">Bio</h3>
                   <button
-                    onClick={() => setEditingAbout(!editingAbout)}
-                    className="p-1.5 text-zinc-400 hover:text-indigo-400 rounded-lg hover:bg-zinc-800 transition-colors cursor-pointer"
-                    title="Edit About"
+                    onClick={() => setEditingBio(!editingBio)}
+                    className="px-3 py-1.5 text-xs font-semibold text-indigo-400 hover:text-indigo-300 border border-indigo-500/30 rounded-xl hover:bg-indigo-500/10 transition-colors cursor-pointer"
                   >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
+                    {editingBio ? "Cancel" : "Edit Bio"}
                   </button>
                 </div>
 
-                {editingAbout ? (
-                  <div className="space-y-3">
+                {editingBio ? (
+                  <div className="space-y-4">
                     <textarea
-                      rows={4}
-                      value={aboutText}
-                      onChange={(e) => setAboutText(e.target.value)}
-                      className="w-full p-3 bg-zinc-950 border border-zinc-800 rounded-2xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                      rows={10}
+                      value={bioText}
+                      onChange={(e) => setBioText(e.target.value)}
+                      placeholder="Enter bio text..."
+                      className="w-full p-4 bg-zinc-950 border border-zinc-800 rounded-2xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y font-sans leading-relaxed"
                     />
                     <div className="flex justify-end gap-2">
                       <button
-                        onClick={() => setEditingAbout(false)}
-                        className="px-4 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition-colors cursor-pointer"
+                        onClick={handleSaveBio}
+                        disabled={profileLoading}
+                        className="px-5 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition-colors cursor-pointer disabled:opacity-50"
                       >
-                        Save
+                        {profileLoading ? "Saving..." : "Save Bio"}
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-zinc-300 leading-relaxed">
-                    {aboutText}
-                  </p>
-                )}
-              </div>
-
-              {/* What I love about my job Section */}
-              <div className="bg-zinc-900/60 border border-zinc-800/80 backdrop-blur-xl rounded-3xl p-6 space-y-3 text-left">
-                <div className="flex items-center justify-between border-b border-zinc-800/60 pb-2">
-                  <h3 className="text-base font-semibold text-white">What I love about my job</h3>
-                  <button
-                    onClick={() => setEditingJobLove(!editingJobLove)}
-                    className="p-1.5 text-zinc-400 hover:text-indigo-400 rounded-lg hover:bg-zinc-800 transition-colors cursor-pointer"
-                    title="Edit Story"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
-                  </button>
-                </div>
-
-                {editingJobLove ? (
-                  <div className="space-y-3">
-                    <textarea
-                      rows={3}
-                      value={jobLoveText}
-                      onChange={(e) => setJobLoveText(e.target.value)}
-                      className="w-full p-3 bg-zinc-950 border border-zinc-800 rounded-2xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
-                    />
-                    <div className="flex justify-end gap-2">
-                      <button
-                        onClick={() => setEditingJobLove(false)}
-                        className="px-4 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition-colors cursor-pointer"
-                      >
-                        Save
-                      </button>
-                    </div>
+                  <div className="min-h-[160px]">
+                    {bioText ? (
+                      <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap font-sans">
+                        {bioText}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-zinc-500 italic">null</p>
+                    )}
                   </div>
-                ) : (
-                  <p className="text-sm text-zinc-300 leading-relaxed">
-                    {jobLoveText}
-                  </p>
-                )}
-              </div>
-
-              {/* My interests and hobbies Section */}
-              <div className="bg-zinc-900/60 border border-zinc-800/80 backdrop-blur-xl rounded-3xl p-6 space-y-3 text-left">
-                <div className="flex items-center justify-between border-b border-zinc-800/60 pb-2">
-                  <h3 className="text-base font-semibold text-white">My interests and hobbies</h3>
-                  <button
-                    onClick={() => setEditingHobbies(!editingHobbies)}
-                    className="p-1.5 text-zinc-400 hover:text-indigo-400 rounded-lg hover:bg-zinc-800 transition-colors cursor-pointer"
-                    title="Edit Hobbies"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
-                  </button>
-                </div>
-
-                {editingHobbies ? (
-                  <div className="space-y-3">
-                    <textarea
-                      rows={3}
-                      value={hobbiesText}
-                      onChange={(e) => setHobbiesText(e.target.value)}
-                      className="w-full p-3 bg-zinc-950 border border-zinc-800 rounded-2xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
-                    />
-                    <div className="flex justify-end gap-2">
-                      <button
-                        onClick={() => setEditingHobbies(false)}
-                        className="px-4 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition-colors cursor-pointer"
-                      >
-                        Save
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-sm text-zinc-300 leading-relaxed">
-                    {hobbiesText}
-                  </p>
                 )}
               </div>
 
@@ -510,12 +559,13 @@ export default function ProfilePage() {
                       required
                       value={newSkillInput}
                       onChange={(e) => setNewSkillInput(e.target.value)}
-                      placeholder="e.g. Next.js, Rust..."
+                      placeholder="e.g. Next.js, Python..."
                       className="flex-1 px-3 py-1.5 bg-zinc-950 border border-zinc-800 rounded-xl text-white text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                     <button
                       type="submit"
-                      className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-colors cursor-pointer"
+                      disabled={profileLoading}
+                      className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-colors cursor-pointer disabled:opacity-50"
                     >
                       Add
                     </button>
@@ -524,22 +574,26 @@ export default function ProfilePage() {
 
                 {/* Skill Chips Cluster */}
                 <div className="flex flex-wrap gap-2 pt-1">
-                  {skills.map((skill) => (
-                    <span
-                      key={skill}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-950/80 border border-zinc-800 text-zinc-200 text-xs font-medium group hover:border-zinc-700 transition-colors"
-                    >
-                      <span>{skill}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveSkill(skill)}
-                        className="text-zinc-500 hover:text-rose-400 transition-colors cursor-pointer"
-                        title="Remove skill"
+                  {skills.length > 0 ? (
+                    skills.map((skill) => (
+                      <span
+                        key={skill}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-950/80 border border-zinc-800 text-zinc-200 text-xs font-medium group hover:border-zinc-700 transition-colors"
                       >
-                        ×
-                      </button>
-                    </span>
-                  ))}
+                        <span>{skill}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveSkill(skill)}
+                          className="text-zinc-500 hover:text-rose-400 transition-colors cursor-pointer"
+                          title="Remove skill"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-zinc-500 italic">null</span>
+                  )}
                 </div>
               </div>
 
@@ -569,7 +623,6 @@ export default function ProfilePage() {
                     <div className="grid grid-cols-2 gap-2">
                       <input
                         type="text"
-                        required
                         value={newCertIssuer}
                         onChange={(e) => setNewCertIssuer(e.target.value)}
                         placeholder="Issuer (e.g. AWS)"
@@ -593,7 +646,8 @@ export default function ProfilePage() {
                       </button>
                       <button
                         type="submit"
-                        className="px-3 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs"
+                        disabled={profileLoading}
+                        className="px-3 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs disabled:opacity-50"
                       >
                         Save
                       </button>
@@ -603,20 +657,26 @@ export default function ProfilePage() {
 
                 {/* Certification List */}
                 <div className="space-y-3">
-                  {certifications.map((cert, idx) => (
-                    <div
-                      key={idx}
-                      className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 flex items-start justify-between gap-3"
-                    >
-                      <div className="space-y-0.5">
-                        <h4 className="text-xs font-semibold text-white">{cert.name}</h4>
-                        <p className="text-[11px] text-zinc-400">{cert.issuer}</p>
+                  {certifications.length > 0 ? (
+                    certifications.map((cert, idx) => (
+                      <div
+                        key={idx}
+                        className="p-3.5 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 flex items-start justify-between gap-3"
+                      >
+                        <div className="space-y-0.5">
+                          <h4 className="text-xs font-semibold text-white">{cert.name}</h4>
+                          {cert.issuer && <p className="text-[11px] text-zinc-400">{cert.issuer}</p>}
+                        </div>
+                        {cert.year && (
+                          <span className="px-2 py-0.5 text-[10px] font-mono font-semibold bg-zinc-800 text-zinc-300 rounded-md">
+                            {cert.year}
+                          </span>
+                        )}
                       </div>
-                      <span className="px-2 py-0.5 text-[10px] font-mono font-semibold bg-zinc-800 text-zinc-300 rounded-md">
-                        {cert.year}
-                      </span>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <span className="text-xs text-zinc-500 italic">null</span>
+                  )}
                 </div>
 
               </div>
@@ -631,36 +691,265 @@ export default function ProfilePage() {
         {/* =================================================================== */}
         {profileTab === "private_info" && (
           <div className="bg-zinc-900/60 border border-zinc-800 backdrop-blur-xl rounded-3xl p-6 sm:p-8 space-y-6 text-left animate-in fade-in duration-150">
-            <h3 className="text-lg font-serif text-white border-b border-zinc-800 pb-3">
-              Private Personal Information
-            </h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div className="p-4 bg-zinc-950/60 border border-zinc-800/80 rounded-2xl space-y-1">
-                <span className="text-xs text-zinc-400 font-medium uppercase tracking-wider">Personal Email</span>
-                <p className="text-sm font-medium text-white">alex.morgan.personal@example.com</p>
-              </div>
-
-              <div className="p-4 bg-zinc-950/60 border border-zinc-800/80 rounded-2xl space-y-1">
-                <span className="text-xs text-zinc-400 font-medium uppercase tracking-wider">Date of Birth</span>
-                <p className="text-sm font-medium text-white">October 14, 1994</p>
-              </div>
-
-              <div className="p-4 bg-zinc-950/60 border border-zinc-800/80 rounded-2xl space-y-1">
-                <span className="text-xs text-zinc-400 font-medium uppercase tracking-wider">Nationality</span>
-                <p className="text-sm font-medium text-white">United States</p>
-              </div>
-
-              <div className="p-4 bg-zinc-950/60 border border-zinc-800/80 rounded-2xl space-y-1 sm:col-span-2">
-                <span className="text-xs text-zinc-400 font-medium uppercase tracking-wider">Residential Address</span>
-                <p className="text-sm font-medium text-white">742 Evergreen Terrace, San Francisco, CA 94107</p>
-              </div>
-
-              <div className="p-4 bg-zinc-950/60 border border-zinc-800/80 rounded-2xl space-y-1">
-                <span className="text-xs text-zinc-400 font-medium uppercase tracking-wider">Emergency Contact</span>
-                <p className="text-sm font-medium text-white">Taylor Morgan • +1 (555) 987-6543</p>
-              </div>
+            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+              <h3 className="text-lg font-serif text-white">
+                Private Personal & Statutory Information
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsEditingPrivate(!isEditingPrivate)}
+                className="px-3 py-1.5 text-xs font-semibold text-indigo-400 hover:text-indigo-300 border border-indigo-500/30 rounded-xl hover:bg-indigo-500/10 transition-colors cursor-pointer"
+              >
+                {isEditingPrivate ? "Cancel Editing" : "Edit Information"}
+              </button>
             </div>
+
+            {isEditingPrivate ? (
+              <form onSubmit={handleSavePrivateInfo} className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                      Personal Email
+                    </label>
+                    <input
+                      type="email"
+                      value={privateFormData.p_email}
+                      onChange={(e) => setPrivateFormData({ ...privateFormData, p_email: e.target.value })}
+                      placeholder="Personal Email"
+                      className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                      Date of Birth
+                    </label>
+                    <input
+                      type="date"
+                      value={privateFormData.dob}
+                      onChange={(e) => setPrivateFormData({ ...privateFormData, dob: e.target.value })}
+                      className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                      Nationality
+                    </label>
+                    <input
+                      type="text"
+                      value={privateFormData.nationality}
+                      onChange={(e) => setPrivateFormData({ ...privateFormData, nationality: e.target.value })}
+                      placeholder="Nationality"
+                      className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                      Gender
+                    </label>
+                    <input
+                      type="text"
+                      value={privateFormData.gender}
+                      onChange={(e) => setPrivateFormData({ ...privateFormData, gender: e.target.value })}
+                      placeholder="Gender"
+                      className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                      Marital Status
+                    </label>
+                    <input
+                      type="text"
+                      value={privateFormData.marital_status}
+                      onChange={(e) => setPrivateFormData({ ...privateFormData, marital_status: e.target.value })}
+                      placeholder="Marital Status"
+                      className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                      Date of Joining
+                    </label>
+                    <input
+                      type="date"
+                      value={privateFormData.doj}
+                      onChange={(e) => setPrivateFormData({ ...privateFormData, doj: e.target.value })}
+                      className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1 sm:col-span-2 lg:col-span-3">
+                    <label className="block text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                      Location / Address
+                    </label>
+                    <input
+                      type="text"
+                      value={privateFormData.location}
+                      onChange={(e) => setPrivateFormData({ ...privateFormData, location: e.target.value })}
+                      placeholder="Location / Address"
+                      className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+
+                  {/* Statutory & Banking Section */}
+                  <div className="sm:col-span-2 lg:col-span-3 border-t border-zinc-800 pt-4 mt-2">
+                    <h4 className="text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-3">
+                      Statutory & Banking Info
+                    </h4>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                      UAN Number
+                    </label>
+                    <input
+                      type="text"
+                      value={privateFormData.uan_no}
+                      onChange={(e) => setPrivateFormData({ ...privateFormData, uan_no: e.target.value })}
+                      placeholder="UAN Number"
+                      className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                      PAN Number
+                    </label>
+                    <input
+                      type="text"
+                      value={privateFormData.pan_no}
+                      onChange={(e) => setPrivateFormData({ ...privateFormData, pan_no: e.target.value })}
+                      placeholder="PAN Number"
+                      className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                      Bank Name
+                    </label>
+                    <input
+                      type="text"
+                      value={privateFormData.bank_name}
+                      onChange={(e) => setPrivateFormData({ ...privateFormData, bank_name: e.target.value })}
+                      placeholder="Bank Name"
+                      className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                      IFSC Code
+                    </label>
+                    <input
+                      type="text"
+                      value={privateFormData.ifsc_code}
+                      onChange={(e) => setPrivateFormData({ ...privateFormData, ifsc_code: e.target.value })}
+                      placeholder="IFSC Code"
+                      className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                    />
+                  </div>
+
+                  <div className="space-y-1 sm:col-span-2">
+                    <label className="block text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                      Account Number
+                    </label>
+                    <input
+                      type="text"
+                      value={privateFormData.acc_number}
+                      onChange={(e) => setPrivateFormData({ ...privateFormData, acc_number: e.target.value })}
+                      placeholder="Account Number"
+                      className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4 border-t border-zinc-800">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingPrivate(false)}
+                    className="px-4 py-2 text-xs font-semibold rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={profileLoading}
+                    className="px-5 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition-colors disabled:opacity-50"
+                  >
+                    {profileLoading ? "Saving..." : "Save Changes"}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="p-4 bg-zinc-950/60 border border-zinc-800/80 rounded-2xl space-y-1">
+                  <span className="text-xs text-zinc-400 font-medium uppercase tracking-wider">Personal Email</span>
+                  <p className="text-sm font-medium text-white">{privateFormData.p_email || "null"}</p>
+                </div>
+
+                <div className="p-4 bg-zinc-950/60 border border-zinc-800/80 rounded-2xl space-y-1">
+                  <span className="text-xs text-zinc-400 font-medium uppercase tracking-wider">Date of Birth</span>
+                  <p className="text-sm font-medium text-white">{privateFormData.dob || "null"}</p>
+                </div>
+
+                <div className="p-4 bg-zinc-950/60 border border-zinc-800/80 rounded-2xl space-y-1">
+                  <span className="text-xs text-zinc-400 font-medium uppercase tracking-wider">Nationality</span>
+                  <p className="text-sm font-medium text-white">{privateFormData.nationality || "null"}</p>
+                </div>
+
+                <div className="p-4 bg-zinc-950/60 border border-zinc-800/80 rounded-2xl space-y-1">
+                  <span className="text-xs text-zinc-400 font-medium uppercase tracking-wider">Gender</span>
+                  <p className="text-sm font-medium text-white">{privateFormData.gender || "null"}</p>
+                </div>
+
+                <div className="p-4 bg-zinc-950/60 border border-zinc-800/80 rounded-2xl space-y-1">
+                  <span className="text-xs text-zinc-400 font-medium uppercase tracking-wider">Marital Status</span>
+                  <p className="text-sm font-medium text-white">{privateFormData.marital_status || "null"}</p>
+                </div>
+
+                <div className="p-4 bg-zinc-950/60 border border-zinc-800/80 rounded-2xl space-y-1">
+                  <span className="text-xs text-zinc-400 font-medium uppercase tracking-wider">Date of Joining</span>
+                  <p className="text-sm font-medium text-white">{privateFormData.doj || "null"}</p>
+                </div>
+
+                <div className="p-4 bg-zinc-950/60 border border-zinc-800/80 rounded-2xl space-y-1 sm:col-span-2 lg:col-span-3">
+                  <span className="text-xs text-zinc-400 font-medium uppercase tracking-wider">Location / Address</span>
+                  <p className="text-sm font-medium text-white">{location}</p>
+                </div>
+
+                {/* Banking & Statutory Details Display */}
+                <div className="p-4 bg-zinc-950/60 border border-zinc-800/80 rounded-2xl space-y-1">
+                  <span className="text-xs text-zinc-400 font-medium uppercase tracking-wider">UAN Number</span>
+                  <p className="text-sm font-mono font-medium text-white">{privateFormData.uan_no || "null"}</p>
+                </div>
+
+                <div className="p-4 bg-zinc-950/60 border border-zinc-800/80 rounded-2xl space-y-1">
+                  <span className="text-xs text-zinc-400 font-medium uppercase tracking-wider">PAN Number</span>
+                  <p className="text-sm font-mono font-medium text-white">{privateFormData.pan_no || "null"}</p>
+                </div>
+
+                <div className="p-4 bg-zinc-950/60 border border-zinc-800/80 rounded-2xl space-y-1">
+                  <span className="text-xs text-zinc-400 font-medium uppercase tracking-wider">Bank Name</span>
+                  <p className="text-sm font-medium text-white">{privateFormData.bank_name || "null"}</p>
+                </div>
+
+                <div className="p-4 bg-zinc-950/60 border border-zinc-800/80 rounded-2xl space-y-1">
+                  <span className="text-xs text-zinc-400 font-medium uppercase tracking-wider">IFSC Code</span>
+                  <p className="text-sm font-mono font-medium text-white">{privateFormData.ifsc_code || "null"}</p>
+                </div>
+
+                <div className="p-4 bg-zinc-950/60 border border-zinc-800/80 rounded-2xl space-y-1 sm:col-span-2">
+                  <span className="text-xs text-zinc-400 font-medium uppercase tracking-wider">Account Number</span>
+                  <p className="text-sm font-mono font-medium text-white">{privateFormData.acc_number || "null"}</p>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -670,7 +959,7 @@ export default function ProfilePage() {
         {profileTab === "salary_info" && isAdmin && (
           <div className="space-y-6 animate-in fade-in duration-150">
             
-            {/* Top Wage Input & Schedule Config (From Wireframe) */}
+            {/* Top Wage Input & Schedule Config */}
             <div className="w-full bg-zinc-900/70 border border-zinc-800 backdrop-blur-xl rounded-3xl p-6 sm:p-8 shadow-xl space-y-6">
               
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800/80 pb-4">
@@ -690,7 +979,7 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* Monthly & Yearly Wage Row + Working Days Config (No Spinner Arrows, Smooth typing) */}
+              {/* Monthly & Yearly Wage Row + Working Days Config */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-left">
                 
                 {/* Monthly Wage Input */}
@@ -733,7 +1022,7 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                {/* Working Days Config (Validated strictly 1 - 7 with error message) */}
+                {/* Working Days Config */}
                 <div className="p-4 bg-zinc-950/70 border border-zinc-800 rounded-2xl space-y-1.5">
                   <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-300">
                     Number of working days in a week
@@ -775,7 +1064,7 @@ export default function ProfilePage() {
                   )}
                 </div>
 
-                {/* Break Time Config (Validated up to 24 hrs) */}
+                {/* Break Time Config */}
                 <div className="p-4 bg-zinc-950/70 border border-zinc-800 rounded-2xl space-y-1.5">
                   <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-300">
                     Break Time
@@ -804,7 +1093,7 @@ export default function ProfilePage() {
 
             </div>
 
-            {/* Salary Breakdown & Statutory Deductions Grid (Exact Clean Wireframe Layout) */}
+            {/* Salary Breakdown & Statutory Deductions Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               
               {/* Left Column: Salary Components (7 cols) */}
@@ -896,7 +1185,7 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* Right Column: PF, Deductions, and Themed Net Take-Home (5 cols) */}
+              {/* Right Column: PF, Deductions, and Net Take-Home (5 cols) */}
               <div className="lg:col-span-5 space-y-6 text-left">
                 
                 {/* Provident Fund (PF) Contribution */}
@@ -950,7 +1239,7 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                {/* Net In-Hand Salary Card (Normal Obsidian Card Style matching other sections) */}
+                {/* Net In-Hand Salary Card */}
                 <div className="bg-zinc-900/60 border border-zinc-800/80 backdrop-blur-xl rounded-3xl p-6 space-y-4 text-left">
                   <div className="flex items-center justify-between border-b border-zinc-800/60 pb-2">
                     <h4 className="text-base font-semibold text-white">Net In-Hand Salary</h4>

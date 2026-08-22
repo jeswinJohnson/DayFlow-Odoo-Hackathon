@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { User, AppContextType } from "@/types";
+import { User, AppContextType, MyProfile, EditProfile } from "@/types";
 import { createClient } from "@/supabase/client";
 import toast from "react-hot-toast";
 
@@ -11,6 +11,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [activeUser, setActiveUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
   const [isRecoveryMode, setIsRecoveryMode] = useState<boolean>(false);
+  const [myProfile, setMyProfile] = useState<MyProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState<boolean>(false);
 
   const [supabase] = useState(() => createClient());
 
@@ -193,6 +195,155 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setIsRecoveryMode(false);
   };
 
+
+  // General Helper Funcations
+  const getDataFromServer = async (endpoints: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error("No active session found");
+      }
+
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND;
+      const response = await fetch(`${backendUrl}/v1/${endpoints}`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${session.access_token}`,
+          "Content-Type": "application/json"
+        }
+      });
+
+      if (!response.ok) {
+        try{
+          const responseData = await response.json();
+          toast.error(`${responseData.detail}`);
+        }catch(e){
+          toast.error(`Uh oh! Something went wrong while fetching data.`);
+        }
+        return null
+      }
+
+      const responseData = await response.json();
+      return responseData;
+    } catch (error) {
+      console.error("fetch error:", error);
+      toast.error("Uh oh! Something went wrong while fetching data.");
+    }
+  }
+
+  const postDataToServer = async (endpoints: string, body: any) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error("No active session found");
+      }
+
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND;
+      const response = await fetch(`${backendUrl}/v1/${endpoints}`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${session.access_token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.json();
+        console.log(errorBody);
+        if (errorBody.detail) {
+          throw new Error(errorBody.detail);
+        } else {
+          throw new Error("Uh oh! Something went wrong while updating data.");
+        }
+      }
+
+      const responseData = await response.json();
+      return responseData;
+    } catch (error) {
+      const err = error as any;
+      console.error("fetch error:", err.message);
+      toast.error(err.message);
+      throw error;
+    }
+  };
+
+  const patchDataToServer = async (endpoints: string, body: any) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error("No active session found");
+      }
+
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND;
+      const response = await fetch(`${backendUrl}/v1/${endpoints}`, {
+        method: "PATCH",
+        headers: {
+          "Authorization": `Bearer ${session.access_token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.json();
+        console.log(errorBody);
+        if (errorBody.detail) {
+          if (Array.isArray(errorBody.detail)) {
+            const msgs = errorBody.detail.map((e: any) => e.msg || e.detail).join(", ");
+            throw new Error(msgs);
+          }
+          throw new Error(errorBody.detail);
+        } else {
+          throw new Error("Uh oh! Something went wrong while updating data.");
+        }
+      }
+
+      const responseData = await response.json();
+      return responseData;
+    } catch (error) {
+      const err = error as any;
+      console.error("patch error:", err.message);
+      toast.error(err.message || "Uh oh! Something went wrong while updating data.");
+      throw error;
+    }
+  };
+
+  const fetchMyProfile = async (): Promise<MyProfile | null> => {
+    setProfileLoading(true);
+    try {
+      const data = await getDataFromServer("my-profile");
+      if (data) {
+        setMyProfile(data);
+        return data;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error fetching my profile:", error);
+      return null;
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  const updateMyProfile = async (editData: EditProfile): Promise<MyProfile | null> => {
+    setProfileLoading(true);
+    try {
+      const data = await patchDataToServer("my-profile", editData);
+      if (data) {
+        setMyProfile(data);
+        toast.success("Profile updated successfully!");
+        return data;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      return null;
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -205,6 +356,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         setIsRecoveryMode,
         resetPassword,
         updatePassword,
+        myProfile,
+        profileLoading,
+        fetchMyProfile,
+        updateMyProfile,
+        getDataFromServer,
+        postDataToServer,
+        patchDataToServer,
       }}
     >
       {children}
