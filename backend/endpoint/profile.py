@@ -1,7 +1,8 @@
+from typing import List
 from fastapi import APIRouter, Depends
 from supabase import Client
 
-from schema.profile import MyProfile, EditProfile
+from schema.profile import MyProfile, EditProfile, EmployeeDirectory
 import functions.profile as pf
 from schema.auth import CurrentUser
 from core.dep import get_current_user, get_supabase_auth
@@ -19,3 +20,11 @@ def edit_my_profile(
     supabase: Client = Depends(get_supabase_auth)
 ):
     return pf.edit_my_profile(supabase, current_user, profile_data)
+
+@router.get("/directory", response_model=List[EmployeeDirectory])
+def get_directory(
+    current_user: CurrentUser = Depends(get_current_user),
+    supabase: Client = Depends(get_supabase_auth)
+):
+    return pf.get_company_directory(supabase, current_user)
+

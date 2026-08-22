@@ -5,5 +5,6 @@ export { DashboardHeader } from "./DashboardHeader";
 export { ActionBar } from "./ActionBar";
 export { EmployeeCard } from "./EmployeeCard";
 export { EmployeeModal } from "./EmployeeModal";
+export { EmployeeSkeleton } from "./EmployeeSkeleton";
 export { AttendanceView } from "./AttendanceView";
 export { TimeOffView } from "./TimeOffView";

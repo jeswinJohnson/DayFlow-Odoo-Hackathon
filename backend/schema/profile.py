@@ -47,3 +47,17 @@ class EditProfile(BaseModel):
     acc_number: Optional[str] = None
 
 
+class EmployeeDirectory(BaseModel):
+    id: Optional[str] = None
+    name: str
+    f_name: Optional[str] = None
+    l_name: Optional[str] = None
+    designation: Optional[str] = None
+    dept: Optional[str] = None
+    email: str
+    phone: Optional[str] = None
+    bio: Optional[str] = None
+    location: Optional[str] = None
+
+
+

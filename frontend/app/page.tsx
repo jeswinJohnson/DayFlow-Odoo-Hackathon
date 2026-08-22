@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useApp } from "@/context/AppContext";
 import {
   DashboardHeader,
   ActionBar,
   EmployeeCard,
+  EmployeeSkeleton,
   EmployeeModal,
   AttendanceView,
   TimeOffView,
@@ -17,11 +18,17 @@ import {
   INITIAL_EMPLOYEES,
   INITIAL_ATTENDANCE,
   INITIAL_TIME_OFF,
+  mapDirectoryToEmployee,
 } from "@/data/mockData";
 import toast from "react-hot-toast";
 
 export default function Home() {
-  const { activeUser } = useApp();
+  const { activeUser, directory, directoryLoading, fetchDirectory } = useApp();
+
+  // Fetch employee directory from backend on mount
+  useEffect(() => {
+    fetchDirectory();
+  }, []);
 
   // Navigation State
   const [activeTab, setActiveTab] = useState<"employees" | "attendance" | "time_off">("employees");
@@ -31,7 +38,20 @@ export default function Home() {
   const [checkInTime, setCheckInTime] = useState<string | null>("08:45 AM");
 
   // Data Collections State
-  const [employees, setEmployees] = useState<MockEmployee[]>(INITIAL_EMPLOYEES);
+  const [localEmployees, setLocalEmployees] = useState<MockEmployee[]>([]);
+
+  // Derived / Merged employees list
+  const employees = useMemo(() => {
+    if (directory && directory.length > 0) {
+      const apiEmployees = directory.map(mapDirectoryToEmployee);
+      // Combine API directory with any locally added employees
+      const apiIds = new Set(apiEmployees.map((e) => e.id));
+      const newLocals = localEmployees.filter((e) => !apiIds.has(e.id));
+      return [...apiEmployees, ...newLocals];
+    }
+    // If backend returns empty array or not loaded yet, fallback to mock data
+    return localEmployees.length > 0 ? localEmployees : INITIAL_EMPLOYEES;
+  }, [directory, localEmployees]);
   const [attendanceRecords, setAttendanceRecords] = useState<MockAttendance[]>(INITIAL_ATTENDANCE);
   const [timeOffRequests, setTimeOffRequests] = useState<MockTimeOff[]>(INITIAL_TIME_OFF);
 
@@ -67,7 +87,7 @@ export default function Home() {
       setAttendanceRecords((prev) => [newRecord, ...prev]);
 
       // Update employee status
-      setEmployees((prev) =>
+      setLocalEmployees((prev) =>
         prev.map((emp) =>
           emp.id === "EMP-001" ? { ...emp, status: "absent" } : emp
         )
@@ -93,7 +113,7 @@ export default function Home() {
       setAttendanceRecords((prev) => [newRecord, ...prev]);
 
       // Update employee status
-      setEmployees((prev) =>
+      setLocalEmployees((prev) =>
         prev.map((emp) =>
           emp.id === "EMP-001" ? { ...emp, status: "present", checkInTime: nowTime } : emp
         )
@@ -142,9 +162,9 @@ export default function Home() {
   // Save / Update Employee
   const handleSaveEmployee = (empData: MockEmployee) => {
     if (isCreateMode) {
-      setEmployees((prev) => [empData, ...prev]);
+      setLocalEmployees((prev) => [empData, ...prev]);
     } else {
-      setEmployees((prev) =>
+      setLocalEmployees((prev) =>
         prev.map((emp) => (emp.id === empData.id ? empData : emp))
       );
     }
@@ -164,6 +184,17 @@ export default function Home() {
       return matchesDept && matchesSearch;
     });
   }, [employees, selectedDepartment, searchTerm]);
+
+  // Dynamically extract unique departments from current employees
+  const availableDepartments = useMemo(() => {
+    const deptsSet = new Set<string>();
+    employees.forEach((emp) => {
+      if (emp.department && emp.department.trim()) {
+        deptsSet.add(emp.department.trim());
+      }
+    });
+    return ["All Departments", ...Array.from(deptsSet).sort()];
+  }, [employees]);
 
   // Quick Stats
   const employeeStats = useMemo(() => {
@@ -206,10 +237,13 @@ export default function Home() {
                 setSelectedDepartment={setSelectedDepartment}
                 onNewEmployee={handleOpenNewEmployee}
                 employeeStats={employeeStats}
+                departments={availableDepartments}
               />
 
-              {/* 3-Column Responsive Grid of Employee Cards (Exact Wireframe layout) */}
-              {filteredEmployees.length > 0 ? (
+              {/* 3-Column Responsive Grid of Employee Cards (or Loading Skeleton) */}
+              {directoryLoading ? (
+                <EmployeeSkeleton count={6} />
+              ) : filteredEmployees.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                   {filteredEmployees.map((employee) => (
                     <EmployeeCard

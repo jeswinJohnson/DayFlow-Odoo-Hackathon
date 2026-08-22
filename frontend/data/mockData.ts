@@ -10,7 +10,70 @@ export interface MockEmployee {
   checkInTime?: string;
   location?: string;
   joinedDate?: string;
+  bio?: string;
 }
+
+const AVATAR_PLACEHOLDERS = [
+  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&auto=format&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&auto=format&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&auto=format&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?w=400&auto=format&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&auto=format&fit=crop&q=80",
+];
+
+export const getPlaceholderAvatar = (key: string = ""): string => {
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    hash = (hash << 5) - hash + key.charCodeAt(i);
+    hash |= 0;
+  }
+  const index = Math.abs(hash) % AVATAR_PLACEHOLDERS.length;
+  return AVATAR_PLACEHOLDERS[index];
+};
+
+export const getPlaceholderStatus = (key: string = ""): "present" | "on_leave" | "absent" => {
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    hash = (hash << 5) - hash + key.charCodeAt(i);
+    hash |= 0;
+  }
+  const statuses: ("present" | "on_leave" | "absent")[] = [
+    "present", "present", "present", "on_leave", "present", "absent"
+  ];
+  return statuses[Math.abs(hash) % statuses.length];
+};
+
+export const mapDirectoryToEmployee = (emp: {
+  id?: string | null;
+  name: string;
+  f_name?: string | null;
+  l_name?: string | null;
+  designation?: string | null;
+  dept?: string | null;
+  email: string;
+  phone?: string | null;
+  bio?: string | null;
+  location?: string | null;
+}): MockEmployee => {
+  const fullName = emp.name || `${emp.f_name || ''} ${emp.l_name || ''}`.trim() || 'Team Member';
+  const key = emp.id || emp.email || fullName;
+  return {
+    id: emp.id || `EMP-${emp.email}`,
+    name: fullName,
+    role: emp.designation || 'Team Member',
+    department: emp.dept || 'General',
+    email: emp.email,
+    phone: emp.phone || 'N/A',
+    location: emp.location || 'HQ Office',
+    bio: emp.bio || undefined,
+    status: getPlaceholderStatus(key),
+    avatar: getPlaceholderAvatar(key),
+  };
+};
 
 export interface MockAttendance {
   id: string;

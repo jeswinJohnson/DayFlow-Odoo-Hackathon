@@ -1,12 +1,13 @@
 
 
 import datetime
+from typing import List
 from fastapi import HTTPException
 from postgrest import APIResponse
 from supabase import Client
 
 from schema.auth import CurrentUser
-from schema.profile import MyProfile, EditProfile
+from schema.profile import MyProfile, EditProfile, EmployeeDirectory
 
 
 def get_my_profile(supabase: Client, currentUser:CurrentUser) -> MyProfile:
@@ -95,4 +96,66 @@ def edit_my_profile(supabase: Client, currentUser: CurrentUser, profile_data: Ed
 
         supabase.table("users").update(update_payload).eq("id", currentUser.id).execute()
 
-    return get_my_profile(supabase, currentUser)
+    return get_my_profile(supabase, currentUser)
+
+
+def get_company_directory(supabase: Client, currentUser: CurrentUser) -> List[EmployeeDirectory]:
+    user_res = (
+        supabase.table("users")
+        .select("company_id")
+        .eq("id", currentUser.id)
+        .single()
+        .execute()
+    )
+    user_data = user_res.data or {}
+    company_id = user_data.get("company_id")
+
+    query = supabase.table("users").select(
+        """
+        id,
+        first_name,
+        last_name,
+        email,
+        phone,
+        role,
+        bio,
+        location,
+        company_id,
+        departments ( name )
+    """
+    )
+
+    if company_id is not None:
+        query = query.eq("company_id", company_id)
+
+    res = query.execute()
+
+    directory: List[EmployeeDirectory] = []
+    for emp in res.data or []:
+        f_name = emp.get("first_name") or ""
+        l_name = emp.get("last_name") or ""
+        full_name = f"{f_name} {l_name}".strip() or ""
+
+        dept_data = emp.get("departments")
+        dept_name = dept_data.get("name") if isinstance(dept_data, dict) else ""
+
+        designation = emp.get("designation") or ""
+
+        directory.append(
+            EmployeeDirectory(
+                id=str(emp.get("id")) if emp.get("id") else None,
+                name=full_name,
+                f_name=f_name,
+                l_name=l_name,
+                designation=designation,
+                dept=dept_name,
+                email=emp.get("email") or "",
+                phone=emp.get("phone"),
+                bio=emp.get("bio"),
+                location=emp.get("location"),
+                
+            )
+        )
+
+    return directory
+

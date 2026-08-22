@@ -56,6 +56,19 @@ export interface EditProfile {
   acc_number?: string | null;
 }
 
+export interface EmployeeDirectory {
+  id?: string | null;
+  name: string;
+  f_name?: string | null;
+  l_name?: string | null;
+  designation?: string | null;
+  dept?: string | null;
+  email: string;
+  phone?: string | null;
+  bio?: string | null;
+  location?: string | null;
+}
+
 export interface AppContextType {
   activeUser: User | null;
   authLoading: boolean;
@@ -70,6 +83,9 @@ export interface AppContextType {
   profileLoading: boolean;
   fetchMyProfile: () => Promise<MyProfile | null>;
   updateMyProfile: (data: EditProfile) => Promise<MyProfile | null>;
+  directory: EmployeeDirectory[] | null;
+  directoryLoading: boolean;
+  fetchDirectory: () => Promise<EmployeeDirectory[] | null>;
   getDataFromServer: (endpoints: string) => Promise<any>;
   postDataToServer: (endpoints: string, body: any) => Promise<any>;
   patchDataToServer: (endpoints: string, body: any) => Promise<any>;

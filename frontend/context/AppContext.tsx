@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { User, AppContextType, MyProfile, EditProfile } from "@/types";
+import { User, AppContextType, MyProfile, EditProfile, EmployeeDirectory } from "@/types";
 import { createClient } from "@/supabase/client";
 import toast from "react-hot-toast";
 
@@ -13,6 +13,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [isRecoveryMode, setIsRecoveryMode] = useState<boolean>(false);
   const [myProfile, setMyProfile] = useState<MyProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState<boolean>(false);
+  const [directory, setDirectory] = useState<EmployeeDirectory[] | null>(null);
+  const [directoryLoading, setDirectoryLoading] = useState<boolean>(false);
 
   const [supabase] = useState(() => createClient());
 
@@ -344,6 +346,23 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const fetchDirectory = async (): Promise<EmployeeDirectory[] | null> => {
+    setDirectoryLoading(true);
+    try {
+      const data = await getDataFromServer("directory");
+      if (data) {
+        setDirectory(data);
+        return data;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error fetching employee directory:", error);
+      return null;
+    } finally {
+      setDirectoryLoading(false);
+    }
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -360,6 +379,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         profileLoading,
         fetchMyProfile,
         updateMyProfile,
+        directory,
+        directoryLoading,
+        fetchDirectory,
         getDataFromServer,
         postDataToServer,
         patchDataToServer,

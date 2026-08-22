@@ -174,12 +174,30 @@ export function EmployeeModal({
                   </a>
                 </div>
 
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center justify-between text-sm border-b border-zinc-800/60 pb-3">
                   <span className="text-zinc-400 text-xs font-medium uppercase tracking-wider">Phone</span>
                   <span className="text-zinc-200 font-medium font-mono text-xs">
                     {employee.phone}
                   </span>
                 </div>
+
+                {employee.location && (
+                  <div className="flex items-center justify-between text-sm border-b border-zinc-800/60 pb-3">
+                    <span className="text-zinc-400 text-xs font-medium uppercase tracking-wider">Location</span>
+                    <span className="text-zinc-200 font-medium text-xs truncate max-w-[220px]">
+                      {employee.location}
+                    </span>
+                  </div>
+                )}
+
+                {employee.bio && (
+                  <div className="pt-1 space-y-1">
+                    <span className="text-zinc-400 text-xs font-medium uppercase tracking-wider block">Bio</span>
+                    <p className="text-zinc-300 text-xs leading-relaxed bg-zinc-900/50 p-2.5 rounded-xl border border-zinc-800/50">
+                      {employee.bio}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Close Button */}

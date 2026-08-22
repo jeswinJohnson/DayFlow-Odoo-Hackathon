@@ -14,6 +14,7 @@ interface ActionBarProps {
     onLeave: number;
     absent: number;
   };
+  departments?: string[];
 }
 
 export function ActionBar({
@@ -23,7 +24,9 @@ export function ActionBar({
   setSelectedDepartment,
   onNewEmployee,
   employeeStats,
+  departments,
 }: ActionBarProps) {
+  const departmentList = departments && departments.length > 0 ? departments : DEPARTMENTS;
   return (
     <div className="w-full space-y-4 mb-6">
       
@@ -105,7 +108,7 @@ export function ActionBar({
 
       {/* Department Filter Chips */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-        {DEPARTMENTS.map((dept) => {
+        {departmentList.map((dept) => {
           const isSelected = selectedDepartment === dept;
           return (
             <button
