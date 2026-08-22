@@ -14,40 +14,32 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const [supabase] = useState(() => createClient());
 
-  // FIX: FALLBACK
+  const logout = async () => {
+    await supabase.auth.signOut();
+    setActiveUser(null);
+    setIsRecoveryMode(false);
+  };
+
   const fetchUserProfile = async (userId: string, emailFallback?: string): Promise<User | null> => {
     try {
       const { data, error } = await supabase
         .from("users")
-        .select("*, departments(name)")
-        .eq("id", userId)
+        .select("id, first_name, last_name, email, role")
+        .eq("email", emailFallback)
         .single();
 
       if (error) {
-        console.warn("Could not fetch profile from 'users' table, falling back to auth session info:", error.message);
-        const fallbackUser: User = {
-          id: userId,
-          email: emailFallback || "",
-          name: emailFallback ? emailFallback.split("@")[0] : "User",
-        };
-        setActiveUser(fallbackUser);
-        return fallbackUser;
+        toast.error("Could Not Find User!");
+        logout()
+        return null;
       }
 
-      if (data?.departments?.name) {
-        data.department_name = data.departments.name;
-      }
       setActiveUser(data);
       return data;
     } catch (err) {
-      console.error("Error loading user corporate profile:", err);
-      const fallbackUser: User = {
-        id: userId,
-        email: emailFallback || "",
-        name: emailFallback ? emailFallback.split("@")[0] : "User",
-      };
-      setActiveUser(fallbackUser);
-      return fallbackUser;
+      toast.error("Could Not Find User!");
+      logout()
+      return null;
     }
   };
 
@@ -198,12 +190,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     if (error) {
       throw error;
     }
-    setIsRecoveryMode(false);
-  };
-
-  const logout = async () => {
-    await supabase.auth.signOut();
-    setActiveUser(null);
     setIsRecoveryMode(false);
   };
 
