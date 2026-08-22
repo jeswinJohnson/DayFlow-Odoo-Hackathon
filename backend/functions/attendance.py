@@ -81,7 +81,7 @@ def get_all_attendance(
     """
     3. for admins only, a function called get_all_attendance this will get all the attendance of the company of all the employees for that particular date.
     """
-    if currentUser.role != BundleType.ADMIN and currentUser.role != "admin":
+    if currentUser.role != BundleType.ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only admin users can view company attendance records",
@@ -103,27 +103,12 @@ def get_all_attendance(
 
     # Try calling get_all_attendance RPC if available
     try:
-        rpc_res = supabase.rpc("get_all_attendance", {"date": target_date}).execute()
+        rpc_res = supabase.rpc("get_all_users_attendance", {"p_date": target_date}).execute()
         if rpc_res.data is not None:
+            print(rpc_res.data)
             return GetAllAttendanceResponse(date=target_date, records=rpc_res.data)
     except Exception as e:
         print(f"Notice: get_all_attendance RPC call did not return directly, falling back to table query: {e}")
-
-    # Fallback: Query all users belonging to the company and their attendance for target_date
-    
-
-    if not user_ids:
-        return GetAllAttendanceResponse(date=target_date, records=[])
-
-    att_res = (
-        supabase.table("attendance")
-        .select("*")
-        .in_("user_id", user_ids)
-        .eq("date", target_date)
-        .execute()
-    )
-    records = att_res.data or []
-    return GetAllAttendanceResponse(date=target_date, records=records)
 
 def get_user_daily_attendance(
     supabase: Client,
@@ -139,8 +124,4 @@ def get_user_daily_attendance(
         "get_user_daily_attendance",
         {"p_user_id": target_id, "p_date": target_date},
     )
-    return UserDailyAttendanceResponse(
-        employee_id=target_id,
-        date=target_date,
-        attendance=result,
-    )
+    return result

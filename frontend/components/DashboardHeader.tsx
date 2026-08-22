@@ -29,6 +29,7 @@ export function DashboardHeader({
     checkInTime: contextCheckInTime,
     toggleCheckIn,
     attendanceLoading,
+    authLoading,
   } = useApp();
 
   const isCheckedIn = propIsCheckedIn !== undefined ? propIsCheckedIn : contextIsCheckedIn;
@@ -137,7 +138,7 @@ export function DashboardHeader({
         {/* Right: Systray Check-In & Profile Avatar */}
         <div className="flex items-center gap-3 sm:gap-4">
           
-          {/* Check In / Check Out Systray (Exact Wireframe Spec) */}
+          {/* Check In / Check Out Systray */}
           <div className="relative" ref={systrayMenuRef}>
             <button
               onClick={() => setShowSystrayMenu(!showSystrayMenu)}

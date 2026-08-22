@@ -37,6 +37,21 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [attendanceStatus, setAttendanceStatus] = useState<string | null>(null);
   const [attendanceLoading, setAttendanceLoading] = useState<boolean>(false);
 
+  // Restore state from localStorage on initial client mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedCheckedIn = localStorage.getItem("dayflow_is_checked_in");
+      const storedTime = localStorage.getItem("dayflow_check_in_time");
+      if (storedCheckedIn === "true") {
+        setIsCheckedIn(true);
+        if (storedTime) setCheckInTime(storedTime);
+      } else if (storedCheckedIn === "false") {
+        setIsCheckedIn(false);
+        setCheckInTime(null);
+      }
+    }
+  }, []);
+
   const [supabase] = useState(() => createClient());
 
   const logout = async () => {
@@ -46,6 +61,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setIsCheckedIn(false);
     setCheckInTime(null);
     setAttendanceStatus(null);
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("dayflow_is_checked_in");
+      localStorage.removeItem("dayflow_check_in_time");
+    }
   };
 
   const fetchUserProfile = async (userId: string, emailFallback?: string): Promise<User | null> => {
@@ -406,18 +425,58 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const isPresentStatus = (statusVal: any): boolean => {
+    if (!statusVal) return false;
+    if (typeof statusVal === "boolean") return statusVal;
+
+    let str = typeof statusVal === "object" ? JSON.stringify(statusVal) : String(statusVal);
+    str = str.toLowerCase().trim();
+
+    if (
+      str === "absent" ||
+      str === "checked_out" ||
+      str === "checked out" ||
+      str === "checkout" ||
+      str === "false" ||
+      str === "0" ||
+      str === "none" ||
+      str === "null"
+    ) {
+      return false;
+    }
+
+    if (
+      str === "present" ||
+      str === "checked_in" ||
+      str === "checked in" ||
+      str === "checkin" ||
+      str === "in_progress" ||
+      str === "in progress" ||
+      str === "true" ||
+      str === "active" ||
+      str === "logged in" ||
+      str === "1" ||
+      str.includes("present") ||
+      str.includes("check_in") ||
+      str.includes("checked_in") ||
+      str.includes("checked in") ||
+      str.includes("in_progress")
+    ) {
+      return true;
+    }
+
+    return str.length > 0 && !str.includes("absent") && !str.includes("out");
+  };
+
   const fetchAttendanceStatus = async (): Promise<AttendanceStatusResponse | null> => {
     try {
       const data: AttendanceStatusResponse = await getDataFromServer("attendance/status");
       if (data) {
         setAttendanceStatus(data.status || null);
-        const statusLower = (data.status || "").toLowerCase();
-        const isPresent =
-          statusLower === "present" ||
-          statusLower === "checked_in" ||
-          statusLower === "in_progress" ||
-          statusLower === "true";
-        setIsCheckedIn(isPresent);
+        const isPresent = isPresentStatus(data.status);
+        if (isPresent) {
+          setIsCheckedIn(true);
+        }
         return data;
       }
       return null;
@@ -437,15 +496,35 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       if (employeeId) params.append("employee_id", employeeId);
       const query = params.toString() ? `?${params.toString()}` : "";
 
-      const data: UserDailyAttendanceResponse = await getDataFromServer(`attendance/daily${query}`);
+      const data: UserDailyAttendanceResponse = await getDataFromServer(`attendance/user-daily${query}`);
       if (data && data.attendance) {
-        const att = data.attendance;
-        if (att.check_in && (!att.check_out || att.check_out === "Active" || att.check_out === "—")) {
-          setIsCheckedIn(true);
-          setCheckInTime(att.check_in);
-        } else if (att.check_in && att.check_out) {
-          setIsCheckedIn(false);
-          setCheckInTime(null);
+        const attList = Array.isArray(data.attendance) ? data.attendance : [data.attendance];
+        const att = attList[0];
+        if (att) {
+          const checkInVal = att.check_in || att.checkIn || att.check_in_time;
+          const checkOutVal = att.check_out || att.checkOut || att.check_out_time;
+          if (
+            checkInVal &&
+            (!checkOutVal ||
+              checkOutVal === "Active" ||
+              checkOutVal === "—" ||
+              checkOutVal === "" ||
+              checkOutVal === "null")
+          ) {
+            setIsCheckedIn(true);
+            setCheckInTime(checkInVal);
+            if (typeof window !== "undefined") {
+              localStorage.setItem("dayflow_is_checked_in", "true");
+              localStorage.setItem("dayflow_check_in_time", checkInVal);
+            }
+          } else if (checkInVal && checkOutVal && checkOutVal !== "Active" && checkOutVal !== "—") {
+            setIsCheckedIn(false);
+            setCheckInTime(null);
+            if (typeof window !== "undefined") {
+              localStorage.setItem("dayflow_is_checked_in", "false");
+              localStorage.removeItem("dayflow_check_in_time");
+            }
+          }
         }
       }
       return data || null;
@@ -459,16 +538,16 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setAttendanceLoading(true);
     try {
       const data = await postDataToServer("attendance/check-in", {});
-      if (data) {
-        const nowTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-        setIsCheckedIn(true);
-        setCheckInTime(nowTime);
-        setAttendanceStatus("present");
-        toast.success(data.message || `Checked IN at ${nowTime}!`);
-        await fetchAttendanceStatus();
-        return data;
+      const nowTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      setIsCheckedIn(true);
+      setCheckInTime(nowTime);
+      setAttendanceStatus("present");
+      if (typeof window !== "undefined") {
+        localStorage.setItem("dayflow_is_checked_in", "true");
+        localStorage.setItem("dayflow_check_in_time", nowTime);
       }
-      return null;
+      toast.success(data?.message || `Checked IN at ${nowTime}!`);
+      return data;
     } catch (error) {
       console.error("Error checking in:", error);
       return null;
@@ -481,15 +560,15 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setAttendanceLoading(true);
     try {
       const data = await postDataToServer("attendance/check-out", {});
-      if (data) {
-        setIsCheckedIn(false);
-        setCheckInTime(null);
-        setAttendanceStatus("absent");
-        toast.success(data.message || "Checked OUT successfully.");
-        await fetchAttendanceStatus();
-        return data;
+      setIsCheckedIn(false);
+      setCheckInTime(null);
+      setAttendanceStatus("absent");
+      if (typeof window !== "undefined") {
+        localStorage.setItem("dayflow_is_checked_in", "false");
+        localStorage.removeItem("dayflow_check_in_time");
       }
-      return null;
+      toast.success(data?.message || "Checked OUT successfully.");
+      return data;
     } catch (error) {
       console.error("Error checking out:", error);
       return null;
@@ -509,7 +588,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const fetchAllAttendance = async (date?: string): Promise<GetAllAttendanceResponse | null> => {
     try {
       const query = date ? `?date=${encodeURIComponent(date)}` : "";
-      const data: GetAllAttendanceResponse = await getDataFromServer(`attendance/all${query}`);
+      const data: GetAllAttendanceResponse = await getDataFromServer(`attendance/get-all-attendance${query}`);
       return data || null;
     } catch (error) {
       console.error("Error fetching all attendance:", error);
@@ -532,11 +611,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Sync attendance on user login
+  // Sync attendance on user login / mount
   useEffect(() => {
     if (activeUser?.id) {
-      fetchAttendanceStatus();
-      fetchUserDailyAttendance();
+      Promise.all([fetchUserDailyAttendance(), fetchAttendanceStatus()]);
     }
   }, [activeUser?.id]);
 
