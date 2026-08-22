@@ -241,7 +241,7 @@ export function DashboardHeader({
                 </div>
 
                 <Link
-                  href="/profile"
+                  href={activeUser?.role === "admin" ? "/profile" : "/profile/employee"}
                   onClick={() => setShowAvatarMenu(false)}
                   className="w-full text-left px-3 py-2 text-xs font-medium text-zinc-300 hover:text-white hover:bg-zinc-800/80 rounded-xl transition-colors flex items-center gap-2.5 cursor-pointer"
                 >
