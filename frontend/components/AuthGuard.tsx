@@ -13,17 +13,17 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const pathname = usePathname();
   const router = useRouter();
 
-  const isLoginPage = pathname === "/login";
+  const isPublicRoute = pathname === "/login" || pathname === "/signup";
 
   useEffect(() => {
     if (!authLoading) {
-      if (!activeUser && !isLoginPage) {
+      if (!activeUser && !isPublicRoute) {
         router.replace("/login");
-      } else if (activeUser && isLoginPage) {
+      } else if (activeUser && isPublicRoute) {
         router.replace("/");
       }
     }
-  }, [activeUser, authLoading, isLoginPage, router]);
+  }, [activeUser, authLoading, isPublicRoute, router]);
 
   // Loading state while verifying auth session
   if (authLoading) {
@@ -41,7 +41,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
   }
 
   // Redirecting fallback while navigating to /login
-  if (!activeUser && !isLoginPage) {
+  if (!activeUser && !isPublicRoute) {
     return (
       <div className="min-h-screen w-full flex flex-col items-center justify-center bg-zinc-950 text-white p-4">
         <div className="flex flex-col items-center gap-3">
@@ -52,8 +52,8 @@ export function AuthGuard({ children }: AuthGuardProps) {
     );
   }
 
-  // Redirecting fallback while authenticated user tries to open /login
-  if (activeUser && isLoginPage) {
+  // Redirecting fallback while authenticated user tries to open /login or /signup
+  if (activeUser && isPublicRoute) {
     return (
       <div className="min-h-screen w-full flex flex-col items-center justify-center bg-zinc-950 text-white p-4">
         <div className="flex flex-col items-center gap-3">
