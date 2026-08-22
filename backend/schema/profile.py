@@ -28,3 +28,22 @@ class MyProfile(BaseModel):
     bank_name: Optional[str]
     acc_number: Optional[str]
 
+
+class EditProfile(BaseModel):
+    location: Optional[str] = None
+    bio: Optional[str] = None
+    p_email: Optional[str] = None
+    dob: Optional[datetime.datetime] = None
+    nationality: Optional[str] = None
+    skills: Optional[List[str]] = None
+    certification: Optional[List[str]] = None
+    gender: Optional[str] = None
+    marital_status: Optional[str] = None
+    doj: Optional[datetime.datetime] = None
+    uan_no: Optional[str] = None
+    pan_no: Optional[str] = None
+    ifsc_code: Optional[str] = None
+    bank_name: Optional[str] = None
+    acc_number: Optional[str] = None
+
+

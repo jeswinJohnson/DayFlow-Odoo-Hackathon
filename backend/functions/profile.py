@@ -1,12 +1,12 @@
 
 
-from http.client import HTTPException
-
+import datetime
+from fastapi import HTTPException
 from postgrest import APIResponse
 from supabase import Client
 
 from schema.auth import CurrentUser
-from schema.profile import MyProfile
+from schema.profile import MyProfile, EditProfile
 
 
 def get_my_profile(supabase: Client, currentUser:CurrentUser) -> MyProfile:
@@ -80,3 +80,19 @@ def get_my_profile(supabase: Client, currentUser:CurrentUser) -> MyProfile:
         bank_name=data.get("bank_name"),
         acc_number=data.get("acc_number"),
     )
+
+
+def edit_my_profile(supabase: Client, currentUser: CurrentUser, profile_data: EditProfile) -> MyProfile:
+    raw_dict = profile_data.model_dump(exclude_unset=True)
+    if raw_dict:
+        update_payload = {}
+        for key, value in raw_dict.items():
+            db_key = "personal_email" if key == "p_email" else key
+            if isinstance(value, (datetime.datetime, datetime.date)):
+                update_payload[db_key] = value.isoformat()
+            else:
+                update_payload[db_key] = value
+
+        supabase.table("users").update(update_payload).eq("id", currentUser.id).execute()
+
+    return get_my_profile(supabase, currentUser)
