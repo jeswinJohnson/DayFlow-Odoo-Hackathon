@@ -14,6 +14,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const [supabase] = useState(() => createClient());
 
+  // FIX: FALLBACK
   const fetchUserProfile = async (userId: string, emailFallback?: string): Promise<User | null> => {
     try {
       const { data, error } = await supabase
@@ -102,26 +103,34 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }, [supabase.auth]);
 
   const login = async (identifier: string, password: string) => {
-    let emailToUse = identifier.trim();
+    let emailToUse : string | null = identifier.trim();
 
-    // Support for UID / Employee ID / Username lookup
     if (!emailToUse.includes("@")) {
       try {
         const { data, error } = await supabase
           .from("users")
-          .select("email")
-          .or(`uid.eq.${emailToUse},employee_id.eq.${emailToUse},username.eq.${emailToUse}`)
+          .select("*").eq("id", emailToUse)
           .maybeSingle();
-
         if (error) {
+          toast.error("Invalid User ID, Please Try With Email");
           console.warn("UID lookup notice:", error.message);
+          return;
         }
         if (data?.email) {
           emailToUse = data.email;
+        }else{
+          toast.error("Invalid User ID, Please Try With Email");
+          return;
         }
       } catch (e) {
         console.warn("UID lookup error, proceeding with input as email:", e);
+        toast.error("Uh-Oh, An error occured. Please try again later!");
+        return;
       }
+    }
+
+    if(!emailToUse){
+      return;
     }
 
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -130,7 +139,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     });
 
     if (error) {
-      throw error;
+      console.warn("SignIn Error:", error);
+      toast.error("Invalid Credentials, Please Check Cred");
+      return;
     }
 
     if (data.user?.id) {
@@ -145,18 +156,30 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
     if (!emailToUse.includes("@")) {
       try {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from("users")
-          .select("email")
-          .or(`uid.eq.${emailToUse},employee_id.eq.${emailToUse},username.eq.${emailToUse}`)
+          .select("*").eq("id", emailToUse)
           .maybeSingle();
-
+        if (error) {
+          toast.error("Invalid User ID, Please Try With Email");
+          console.warn("UID lookup notice:", error.message);
+          return;
+        }
         if (data?.email) {
           emailToUse = data.email;
+        }else{
+          toast.error("Invalid User ID, Please Try With Email");
+          return;
         }
       } catch (e) {
-        console.warn("UID resolution notice:", e);
+        console.warn("UID lookup error, proceeding with input as email:", e);
+        toast.error("Uh-Oh, An error occured. Please try again later!");
+        return;
       }
+    }
+
+    if(!emailToUse){
+      return;
     }
 
     const redirectUrl = typeof window !== "undefined" ? `${window.location.origin}/login` : undefined;
