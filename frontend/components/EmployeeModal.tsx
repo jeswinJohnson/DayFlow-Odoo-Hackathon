@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { MockEmployee, DEPARTMENTS } from "@/data/mockData";
+import { useApp } from "@/context/AppContext";
 import toast from "react-hot-toast";
 
 interface EmployeeModalProps {
@@ -21,55 +22,90 @@ export function EmployeeModal({
   onSave,
   isCurrentUserProfile = false,
 }: EmployeeModalProps) {
+  const { departments, fetchDepartments, createUser } = useApp();
+
   // Form State for Create Mode
-  const [name, setName] = useState("");
-  const [role, setRole] = useState("");
-  const [department, setDepartment] = useState("Engineering");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [status, setStatus] = useState<"present" | "on_leave" | "absent">("present");
+  const [departmentId, setDepartmentId] = useState<string | number>("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (isCreateMode) {
-      setName("");
-      setRole("");
-      setDepartment("Engineering");
+    if (isOpen && isCreateMode) {
+      setFirstName("");
+      setLastName("");
       setEmail("");
       setPhone("");
-      setStatus("present");
+      setIsSubmitting(false);
+
+      if (!departments || departments.length === 0) {
+        fetchDepartments().then((depts) => {
+          if (depts && depts.length > 0) {
+            setDepartmentId(depts[0].id);
+          }
+        });
+      } else {
+        setDepartmentId(departments[0].id);
+      }
     }
   }, [isCreateMode, isOpen]);
 
   if (!isOpen) return null;
 
-  const handleCreateSubmit = (e: React.FormEvent) => {
+  const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name.trim()) {
-      toast.error("Please enter employee name.");
+    if (!firstName.trim()) {
+      toast.error("Please enter first name.");
+      return;
+    }
+    if (!lastName.trim()) {
+      toast.error("Please enter last name.");
       return;
     }
     if (!email.trim() || !email.includes("@")) {
-      toast.error("Please enter a valid email address.");
+      toast.error("Please enter a valid work email address.");
       return;
     }
 
-    const payload: MockEmployee = {
-      id: `EMP-${String(Math.floor(Math.random() * 900) + 100)}`,
-      name: name.trim(),
-      role: role.trim() || "Team Member",
-      department,
-      email: email.trim(),
-      phone: phone.trim() || "+1 (555) 000-0000",
-      status,
-      avatar: `https://images.unsplash.com/photo-${1534528741775 + Math.floor(Math.random() * 1000)}?w=400&auto=format&fit=crop&q=80`,
-      joinedDate: "Aug 2026",
-      checkInTime: status === "present" ? "09:00 AM" : undefined,
-    };
+    const deptToSubmit = departmentId || (departments && departments.length > 0 ? departments[0].id : 1);
 
-    onSave(payload);
-    toast.success("New employee added successfully!");
-    onClose();
+    setIsSubmitting(true);
+    try {
+      const result = await createUser({
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        email: email.trim(),
+        phone: phone.trim() || null,
+        department_id: deptToSubmit,
+      });
+
+      if (result) {
+        const selectedDeptObj = departments?.find((d) => String(d.id) === String(deptToSubmit));
+        const deptName = selectedDeptObj ? selectedDeptObj.name : "General";
+
+        const payload: MockEmployee = {
+          id: result.employee_id || result.id || `EMP-${String(Math.floor(Math.random() * 900) + 100)}`,
+          name: `${firstName.trim()} ${lastName.trim()}`,
+          role: result.role || "Team Member",
+          department: deptName,
+          email: email.trim(),
+          phone: phone.trim() || "N/A",
+          status: "present",
+          avatar: `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80`,
+          joinedDate: "Aug 2026",
+        };
+
+        onSave(payload);
+        onClose();
+      }
+    } catch (err) {
+      console.error("Create employee error:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Status Badge Helper
@@ -220,56 +256,39 @@ export function EmployeeModal({
           {isCreateMode && (
             <form onSubmit={handleCreateSubmit} className="space-y-4 text-left">
               
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-300">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Alex Morgan"
-                  className="w-full px-4 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
-                />
-              </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-300">
-                    Role / Position
+                    First Name <span className="text-rose-400">*</span>
                   </label>
                   <input
                     type="text"
                     required
-                    value={role}
-                    onChange={(e) => setRole(e.target.value)}
-                    placeholder="e.g. Designer"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="e.g. Alex"
                     className="w-full px-4 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
                   />
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-300">
-                    Department
+                    Last Name <span className="text-rose-400">*</span>
                   </label>
-                  <select
-                    value={department}
-                    onChange={(e) => setDepartment(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 cursor-pointer"
-                  >
-                    {DEPARTMENTS.filter((d) => d !== "All Departments").map((dept) => (
-                      <option key={dept} value={dept}>
-                        {dept}
-                      </option>
-                    ))}
-                  </select>
+                  <input
+                    type="text"
+                    required
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder="e.g. Morgan"
+                    className="w-full px-4 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
+                  />
                 </div>
               </div>
 
               <div className="space-y-1.5">
                 <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-300">
-                  Work Email
+                  Work Email <span className="text-rose-400">*</span>
                 </label>
                 <input
                   type="email"
@@ -281,32 +300,68 @@ export function EmployeeModal({
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-300">
-                  Phone Number
-                </label>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+1 (555) 000-0000"
-                  className="w-full px-4 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-300">
+                    Department <span className="text-rose-400">*</span>
+                  </label>
+                  <select
+                    value={departmentId}
+                    onChange={(e) => setDepartmentId(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 cursor-pointer"
+                  >
+                    {departments && departments.length > 0 ? (
+                      departments.map((dept) => (
+                        <option key={dept.id} value={dept.id}>
+                          {dept.name}
+                        </option>
+                      ))
+                    ) : (
+                      DEPARTMENTS.filter((d) => d !== "All Departments").map((dept, idx) => (
+                        <option key={dept} value={idx + 1}>
+                          {dept}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-300">
+                    Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+1 (555) 000-0000"
+                    className="w-full px-4 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
+                  />
+                </div>
               </div>
 
               <div className="pt-2 flex items-center justify-end gap-3 border-t border-zinc-800">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-5 py-2.5 rounded-xl text-sm font-semibold text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                  disabled={isSubmitting}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold text-zinc-400 hover:text-white transition-colors cursor-pointer disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition-all duration-200 active:scale-[0.99] shadow-sm cursor-pointer"
+                  disabled={isSubmitting}
+                  className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition-all duration-200 active:scale-[0.99] shadow-sm cursor-pointer disabled:opacity-50 flex items-center gap-2"
                 >
-                  Add Employee
+                  {isSubmitting ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    "Add Employee"
+                  )}
                 </button>
               </div>
 

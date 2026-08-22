@@ -69,6 +69,34 @@ export interface EmployeeDirectory {
   location?: string | null;
 }
 
+export interface DepartmentOut {
+  id: number | string;
+  name: string;
+}
+
+export interface CreateUserRequest {
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone?: string | null;
+  department_id: number | string;
+}
+
+export interface CreateUserResponse {
+  id: string;
+  employee_id: string;
+  uid?: string | null;
+  first_name: string;
+  last_name: string;
+  email: string;
+  password?: string | null;
+  phone?: string | null;
+  department_id: number | string;
+  company_id?: number | string | null;
+  role?: string;
+  message?: string;
+}
+
 export interface AppContextType {
   activeUser: User | null;
   authLoading: boolean;
@@ -86,6 +114,10 @@ export interface AppContextType {
   directory: EmployeeDirectory[] | null;
   directoryLoading: boolean;
   fetchDirectory: () => Promise<EmployeeDirectory[] | null>;
+  departments: DepartmentOut[] | null;
+  departmentsLoading: boolean;
+  fetchDepartments: () => Promise<DepartmentOut[] | null>;
+  createUser: (data: CreateUserRequest) => Promise<CreateUserResponse | null>;
   getDataFromServer: (endpoints: string) => Promise<any>;
   postDataToServer: (endpoints: string, body: any) => Promise<any>;
   patchDataToServer: (endpoints: string, body: any) => Promise<any>;

@@ -23,11 +23,12 @@ import {
 import toast from "react-hot-toast";
 
 export default function Home() {
-  const { activeUser, directory, directoryLoading, fetchDirectory } = useApp();
+  const { activeUser, directory, directoryLoading, fetchDirectory, departments: apiDepartments, fetchDepartments } = useApp();
 
-  // Fetch employee directory from backend on mount
+  // Fetch employee directory & departments from backend on mount
   useEffect(() => {
     fetchDirectory();
+    fetchDepartments();
   }, []);
 
   // Navigation State
@@ -185,16 +186,19 @@ export default function Home() {
     });
   }, [employees, selectedDepartment, searchTerm]);
 
-  // Dynamically extract unique departments from current employees
+  // Dynamically extract unique departments from current employees & API departments
   const availableDepartments = useMemo(() => {
     const deptsSet = new Set<string>();
+    if (apiDepartments && apiDepartments.length > 0) {
+      apiDepartments.forEach((d) => deptsSet.add(d.name.trim()));
+    }
     employees.forEach((emp) => {
       if (emp.department && emp.department.trim()) {
         deptsSet.add(emp.department.trim());
       }
     });
     return ["All Departments", ...Array.from(deptsSet).sort()];
-  }, [employees]);
+  }, [employees, apiDepartments]);
 
   // Quick Stats
   const employeeStats = useMemo(() => {

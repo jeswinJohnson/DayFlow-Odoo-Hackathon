@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { User, AppContextType, MyProfile, EditProfile, EmployeeDirectory } from "@/types";
+import { User, AppContextType, MyProfile, EditProfile, EmployeeDirectory, DepartmentOut, CreateUserRequest, CreateUserResponse } from "@/types";
 import { createClient } from "@/supabase/client";
 import toast from "react-hot-toast";
 
@@ -15,6 +15,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [profileLoading, setProfileLoading] = useState<boolean>(false);
   const [directory, setDirectory] = useState<EmployeeDirectory[] | null>(null);
   const [directoryLoading, setDirectoryLoading] = useState<boolean>(false);
+  const [departments, setDepartments] = useState<DepartmentOut[] | null>(null);
+  const [departmentsLoading, setDepartmentsLoading] = useState<boolean>(false);
 
   const [supabase] = useState(() => createClient());
 
@@ -365,6 +367,38 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const fetchDepartments = async (): Promise<DepartmentOut[] | null> => {
+    setDepartmentsLoading(true);
+    try {
+      const data = await getDataFromServer("department/all");
+      if (data) {
+        setDepartments(data);
+        return data;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error fetching departments:", error);
+      return null;
+    } finally {
+      setDepartmentsLoading(false);
+    }
+  };
+
+  const createUser = async (userData: CreateUserRequest): Promise<CreateUserResponse | null> => {
+    try {
+      const data = await postDataToServer("create-user", userData);
+      if (data) {
+        toast.success(data.message || "User created successfully!");
+        await fetchDirectory();
+        return data;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error creating user:", error);
+      return null;
+    }
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -384,6 +418,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         directory,
         directoryLoading,
         fetchDirectory,
+        departments,
+        departmentsLoading,
+        fetchDepartments,
+        createUser,
         getDataFromServer,
         postDataToServer,
         patchDataToServer,
