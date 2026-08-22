@@ -251,6 +251,7 @@ export default function Home() {
                 isCheckedIn={isCheckedIn}
                 checkInTime={checkInTime}
                 onToggleCheckIn={handleToggleCheckIn}
+                employees={employees}
               />
             </div>
           )}
