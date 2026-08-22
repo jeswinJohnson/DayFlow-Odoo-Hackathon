@@ -110,12 +110,3 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) 
             detail=f"Invalid authentication credentials: {str(e)}",
             headers={"WWW-Authenticate": "Bearer"},
         )
-
-# Health Check Verification
-def verify_health_check(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
-    token = credentials.credentials
-    if token == settings.HEALTH_KEY:
-        pass
-    else:
-        raise HTTPException(status_code=401, detail="Invalid API Key")
-    
