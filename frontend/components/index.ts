@@ -1,4 +1,9 @@
 // Central re-export for UI components
 export { Card } from "./Card";
 export { AuthGuard } from "./AuthGuard";
-
+export { DashboardHeader } from "./DashboardHeader";
+export { ActionBar } from "./ActionBar";
+export { EmployeeCard } from "./EmployeeCard";
+export { EmployeeModal } from "./EmployeeModal";
+export { AttendanceView } from "./AttendanceView";
+export { TimeOffView } from "./TimeOffView";
